@@ -138,12 +138,12 @@ class ModelConvNet3(nn.Module):
 
         # Define second conv layer
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1, stride=2)
-        # this will output ?
+        # this will output 128x4x4
 
         # Define the second pooling layer
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
-        # this will output ?
-
+        # this will output 128x2x2
+        
         # Define the first fully connected layer
         self.fc1 = nn.Linear(128 * 2 * 2, 128)
         # this will output 128
@@ -193,3 +193,61 @@ class ModelConvNet3(nn.Module):
         # print('Output y.shape = ' + str(y.shape))
 
         return y
+
+
+class ModelBetterCNN(nn.Module):
+    """
+    CNN melhorada para MNIST:
+    - Conv + BatchNorm + ReLU
+    - Dropout2d após pooling
+    - FC com BatchNorm1d + Dropout
+    """
+
+    def __init__(self):
+        super(ModelBetterCNN, self).__init__()
+
+        self.features = nn.Sequential(
+            # Bloco 1: 1x28x28 -> 32x28x28 -> pool -> 32x14x14
+            nn.Conv2d(1, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+
+            nn.Conv2d(32, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(p=0.25),
+
+            # Bloco 2: 32x14x14 -> 64x14x14 -> pool -> 64x7x7
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(p=0.25),
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64 * 7 * 7, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.5),
+            nn.Linear(256, 10),
+        )
+
+        print('Model architecture initialized with ' + str(self.getNumberOfParameters()) + ' parameters.')
+        summary(self, input_size=(2, 1, 28, 28))
+
+    def forward(self, x):
+        x = self.features(x)
+        y = self.classifier(x)
+        return y
+
+    def getNumberOfParameters(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)

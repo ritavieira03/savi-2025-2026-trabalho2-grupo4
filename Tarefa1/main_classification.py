@@ -16,7 +16,7 @@ import torch
 from dataset import Dataset
 
 from torchvision import transforms
-from model import ModelFullyconnected, ModelConvNet, ModelConvNet3
+from model import ModelFullyconnected, ModelConvNet, ModelConvNet3, ModelBetterCNN
 from trainer import Trainer
 from datetime import datetime
 
@@ -84,18 +84,19 @@ def main():
     # Create the model
     # ------------------------------------
     # model = ModelFullyconnected()
-    model = ModelConvNet()
+    # model = ModelConvNet()
     # model = ModelConvNet3()
+    model = ModelBetterCNN()
 
     # ------------------------------------
-    # Start trainin
+    # Start training
     # ------------------------------------
     trainer = Trainer(args, train_dataset, test_dataset, model)
 
     # call getitem for an idx and print the resutl
-    image_tensor, label_gt_tensor = trainer.train_dataloader.dataset.__getitem__(
-        107)  # type: ignore
-    label_pred_tensor = model.forward(image_tensor)
+    # image_tensor, label_gt_tensor = trainer.train_dataloader.dataset.__getitem__(107)  # type: ignore
+    # label_pred_tensor = model.forward(image_tensor)
+    
 
     trainer.train()  # run training
 
