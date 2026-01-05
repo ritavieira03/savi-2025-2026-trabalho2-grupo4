@@ -6,7 +6,6 @@ import os
 from random import randint
 import shutil
 import signal
-# from matplotlib import pyplot as plt
 from matplotlib import pyplot as plt
 import numpy as np
 import argparse
@@ -28,7 +27,7 @@ def sigintHandler(signum, frame):
 def main():
 
     # ------------------------------------
-    # Setu pargparse
+    # Setup argparse
     # ------------------------------------
     parser = argparse.ArgumentParser()
 
