@@ -50,7 +50,7 @@ class Trainer():
 
     def train(self):
 
-        print('Training started. Max epochs = ' + str(self.args['num_epochs']))
+        print('Training started.  Max epochs = ' + str(self.args['num_epochs']))
 
         # -----------------------------------------
         # Iterate all epochs
@@ -59,6 +59,7 @@ class Trainer():
 
             self.epoch_idx = i
             print('\nEpoch index = ' + str(self.epoch_idx))
+            
             # -----------------------------------------
             # Train - Iterate over batches
             # -----------------------------------------
@@ -138,6 +139,7 @@ class Trainer():
         print('Training losses: ' + str(self.train_epoch_losses))
         print('Test losses: ' + str(self.test_epoch_losses))
 
+    
     def loadTrain(self):
         print('Resuming training from last checkpoint.')
 
@@ -159,6 +161,7 @@ class Trainer():
         self.model.load_state_dict(checkpoint['model_state_dict'])  # contains the model's weights
         self.optimizer.load_state_dict(
             checkpoint['optimizer_state_dict'])  # contains the optimizer's
+
 
     def saveTrain(self):
 
@@ -211,6 +214,7 @@ class Trainer():
         plt.legend(['Train', 'Test', 'Best'], loc='upper right')
 
         plt.savefig(os.path.join(self.args['experiment_full_name'], 'training.png'))
+
 
     def evaluate(self):
 
