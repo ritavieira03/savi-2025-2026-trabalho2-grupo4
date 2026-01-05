@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # shebang line for linux / mac
 
-## TAREFA 1 - TRAIN A SIMPLE CONVNET ON MNIST DATASET
+## TAREFA 1 - Classificador CNN Otimizado (MNIST Completo)
 
 import glob
 import os
@@ -29,15 +29,13 @@ def sigintHandler(signum, frame):
 def main():
 
     # ------------------------------------
-    # Setup argparse
+    #  Setup argparse
     # ------------------------------------
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-df', '--dataset_folder', type=str,
                         default='../mnist')
-    parser.add_argument('-pe', '--percentage_examples', type=float, default=0.2,
-                        help='Percentage of examples to use for training and testing')
-    parser.add_argument('-ne', '--num_epochs', type=int, default=10,
+    parser.add_argument('-ne', '--num_epochs', type=int, default=8,
                         help='Number of epochs for training')
     parser.add_argument('-bs', '--batch_size', type=int, default=64,
                         help='Batch size for training and testing.')
@@ -51,37 +49,27 @@ def main():
     print(args)
 
     # ------------------------------------
-    # Register the sigtinthandler
+    #  Register the sigtinthandler
     # ------------------------------------
     signal.signal(signal.SIGINT, sigintHandler)
 
     # ------------------------------------
-    # Create the experiment
+    #  Create the experiment
     # ------------------------------------
 
-    # experiment_name = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-    # experiment_name = datetime.today().strftime('%Y-%m-%d %H')  # same experiment every hour
-    # experiment_name = datetime.today().strftime('%Y-%m-%d %H')  # same experiment every hour
-    # args['experiment_full_name'] = os.path.join(
-    #     args['experiment_path'], experiment_name)
     args['experiment_full_name'] = args['experiment_path']
-
     print('Starting experiment: ' + args['experiment_full_name'])
-
-    # if os.path.exists(args['experiment_full_name']):
-    #     shutil.rmtree(args['experiment_full_name'])
-    #     print('Experiment folder already exists. Deleting to start fresh.')
 
     os.makedirs(args['experiment_full_name'], exist_ok=True)
 
     # ------------------------------------
-    # Create datasets
+    #  Create datasets
     # ------------------------------------
     train_dataset = Dataset(args, is_train=True)
     test_dataset = Dataset(args, is_train=False)
 
     # ------------------------------------
-    # Create the model
+    #  Create the model
     # ------------------------------------
     # model = ModelFullyconnected()
     # model = ModelConvNet()
@@ -89,7 +77,7 @@ def main():
     model = ModelBetterCNN()
 
     # ------------------------------------
-    # Start training
+    #  Start training
     # ------------------------------------
     trainer = Trainer(args, train_dataset, test_dataset, model)
 
