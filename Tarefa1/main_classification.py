@@ -34,18 +34,18 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-df', '--dataset_folder', type=str,
-                        default='/home/mike/data/savi_datasets/mnist')
+                        default='../mnist')
     parser.add_argument('-pe', '--percentage_examples', type=float, default=0.2,
                         help='Percentage of examples to use for training and testing')
     parser.add_argument('-ne', '--num_epochs', type=int, default=10,
                         help='Number of epochs for training')
     parser.add_argument('-bs', '--batch_size', type=int, default=64,
                         help='Batch size for training and testing.')
-    parser.add_argument('-ep', '--experiment_path', type=str,
-                        default='/home/mike/data/savi_experiments/aula11',
-                        help='Path to save experiment results.')
     parser.add_argument('-rt', '--resume_training', action='store_true',
                         help='Resume training from last checkpoint if available.')
+    parser.add_argument('-ep', '--experiment_path', type=str, default='../experiments',
+                        help='Path to save experiment results')
+
 
     args = vars(parser.parse_args())
     print(args)
