@@ -143,7 +143,7 @@ class ModelConvNet3(nn.Module):
         # Define the second pooling layer
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
         # this will output 128x2x2
-        
+
         # Define the first fully connected layer
         self.fc1 = nn.Linear(128 * 2 * 2, 128)
         # this will output 128
@@ -196,12 +196,6 @@ class ModelConvNet3(nn.Module):
 
 
 class ModelBetterCNN(nn.Module):
-    """
-    CNN melhorada para MNIST:
-    - Conv + BatchNorm + ReLU
-    - Dropout2d após pooling
-    - FC com BatchNorm1d + Dropout
-    """
 
     def __init__(self):
         super(ModelBetterCNN, self).__init__()

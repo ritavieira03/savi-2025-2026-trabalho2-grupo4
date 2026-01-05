@@ -89,7 +89,7 @@ class Trainer():
                 self.optimizer.step()
 
             # -----------------------------------------
-            # Test - Iterate over batches
+            #  Test - Iterate over batches
             # -----------------------------------------
             self.model.eval()  # set model to evaluation mode
 
@@ -115,7 +115,7 @@ class Trainer():
                 # During test there is no model update
 
             # ---------------------------------
-            # End of the epoch training
+            #  End of the epoch training
             # ---------------------------------
             print('Finished epoch ' + str(i) + ' out of ' + str(self.args['num_epochs']))
             # print('batch_losses: ' + str(batch_losses))
@@ -215,7 +215,7 @@ class Trainer():
     def evaluate(self):
 
         # -----------------------------------------
-        # Iterate over test batches and compute the ground trutch and predicted  values for all examples
+        #  Iterate over test batches and compute the ground trutch and predicted  values for all examples
         # -----------------------------------------
         self.model.eval()  # set model to evaluation mode
         num_batches = len(self.test_dataloader)
@@ -247,7 +247,7 @@ class Trainer():
         print('Predicted classes: ' + str(predicted_classes))
 
         # -----------------------------------------
-        # Create the confusion matrix
+        #  Create the confusion matrix
         # -----------------------------------------
         confusion_matrix = np.zeros((10, 10), dtype=int)
 
@@ -255,7 +255,7 @@ class Trainer():
             confusion_matrix[gt_class][predicted_class] += 1
 
         # -----------------------------------------
-        # Draw the confusion matrix
+        #  Draw the confusion matrix
         # -----------------------------------------
         plt.figure(2)
         class_names = [str(i) for i in range(10)]
@@ -280,7 +280,7 @@ class Trainer():
                                  'confusion_matrix.png'))
 
         # -----------------------------------------
-        # Compute TPs, FPs, TNs, FNs for each class
+        #  Compute TPs, FPs, TNs, FNs for each class
         # -----------------------------------------
         statistics = {}
 

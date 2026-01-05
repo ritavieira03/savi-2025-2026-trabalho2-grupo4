@@ -93,13 +93,7 @@ def main():
     # ------------------------------------
     trainer = Trainer(args, train_dataset, test_dataset, model)
 
-    # call getitem for an idx and print the resutl
-    # image_tensor, label_gt_tensor = trainer.train_dataloader.dataset.__getitem__(107)  # type: ignore
-    # label_pred_tensor = model.forward(image_tensor)
-    
-
     trainer.train()  # run training
-
     trainer.evaluate()  # run evaluation
 
 
