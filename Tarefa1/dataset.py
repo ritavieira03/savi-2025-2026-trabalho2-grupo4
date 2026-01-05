@@ -52,12 +52,12 @@ class Dataset(torch.utils.data.Dataset):
                 # print('label= ' + label)
                 self.labels.append(label)
 
-        # # Select the percentage of examples specified in args
-        # num_examples = round(len(self.image_filenames) * args['percentage_examples'])
+        # Select the percentage of examples specified in args
+        num_examples = round(len(self.image_filenames) * args['percentage_examples'])
 
-        # # Reduce the size of the image_fileanames and labels
-        # self.image_filenames = self.image_filenames[0:num_examples]
-        # self.labels = self.labels[0:num_examples]
+        # Reduce the size of the image_fileanames and labels
+        self.image_filenames = self.image_filenames[0:num_examples]
+        self.labels = self.labels[0:num_examples]
 
         # To conver from a list ot tensor. USed in the method bellow
         self.to_tensor = transforms.ToTensor()
