@@ -1,12 +1,8 @@
-import glob
 import os
-import zipfile
 from matplotlib import pyplot as plt
 import numpy as np
-import requests
 import seaborn
 import torch
-from colorama import init as colorama_init
 from colorama import Fore, Style
 from PIL import Image
 from torchvision import transforms
@@ -14,6 +10,12 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import json
 from tqdm import tqdm
+from sklearn.metrics import (
+    confusion_matrix,
+    precision_recall_fscore_support,
+    classification_report,
+    accuracy_score,
+)
 
 
 class Trainer():
@@ -250,76 +252,144 @@ class Trainer():
         print('Ground truth classes: ' + str(gt_classes))
         print('Predicted classes: ' + str(predicted_classes))
 
-        # -----------------------------------------
-        #  Create the confusion matrix
-        # -----------------------------------------
-        confusion_matrix = np.zeros((10, 10), dtype=int)
 
-        for gt_class, predicted_class in zip(gt_classes, predicted_classes):
-            confusion_matrix[gt_class][predicted_class] += 1
+        ## Calcular métricas detalhadas usando sklearn
+        y_true = []
+        y_pred = []
 
-        # -----------------------------------------
-        #  Draw the confusion matrix
-        # -----------------------------------------
-        plt.figure(2)
-        class_names = [str(i) for i in range(10)]
-        title = 'Confusion Matrix'
-        seaborn.heatmap(confusion_matrix,
-                        annot=True,       # Anotar as células com os valores
-                        fmt='d',          # Formato dos números (inteiros para contagens)
-                        # Mapa de cores (pode escolher outro, ex: 'viridis', 'YlGnBu')
-                        cmap='Blues',
-                        cbar=True,        # Mostrar barra de cores
-                        xticklabels=class_names,  # Rótulos do eixo X (classes previstas)
-                        yticklabels=class_names)  # Rótulos do eixo Y (classes verdadeiras)
+        # Exemplo (adapta ao teu loop):
+        # for images, labels in test_loader:
+        #     logits = model(images.to(device))
+        #     preds = logits.argmax(dim=1)
+        #     y_true.extend(labels.cpu().numpy().tolist())
+        #     y_pred.extend(preds.cpu().numpy().tolist())
 
-        plt.title(title, fontsize=16)  # Título do gráfico
-        plt.xlabel('Predicted classes', fontsize=14)  # Rótulo do eixo X
-        plt.ylabel('True classes', fontsize=14)  # Rótulo do eixo Y
-        plt.xticks(rotation=0, ha='right', fontsize=12)  # Rodar rótulos do X para melhor leitura
-        plt.yticks(rotation=0, fontsize=12)  # Rótulos do Y
-        plt.tight_layout()  # Ajusta o layout para evitar sobreposições
+        y_true = np.array(y_true)
+        y_pred = np.array(y_pred)
 
-        plt.savefig(os.path.join(self.args['experiment_full_name'],
-                                 'confusion_matrix.png'))
+        labels = np.arange(10)
 
-        # -----------------------------------------
-        #  Compute TPs, FPs, TNs, FNs for each class
-        # -----------------------------------------
+        # Matriz de confusão (se ainda quiseres)
+        cm = confusion_matrix(y_true, y_pred, labels=labels)
+
+        # Métricas por classe
+        prec, rec, f1, support = precision_recall_fscore_support(
+            y_true, y_pred,
+            labels=labels,
+            average=None,          # <- por classe
+            zero_division=0        # <- evita warnings quando não há previsões para uma classe
+        )
+
         statistics = {}
+        for i, digit in enumerate(labels):
+            statistics[int(digit)] = {
+                "digit": int(digit),
+                "support": int(support[i]),
+                "precision": float(prec[i]),
+                "recall": float(rec[i]),
+                "f1": float(f1[i])
+            }
 
-        for i in range(10):
+        # Médias globais
+        macro_p, macro_r, macro_f1, _ = precision_recall_fscore_support(
+            y_true, y_pred, labels=labels, average="macro", zero_division=0
+        )
+        micro_p, micro_r, micro_f1, _ = precision_recall_fscore_support(
+            y_true, y_pred, labels=labels, average="micro", zero_division=0
+        )
+        weighted_p, weighted_r, weighted_f1, _ = precision_recall_fscore_support(
+            y_true, y_pred, labels=labels, average="weighted", zero_division=0
+        )
 
-            TPs = int(confusion_matrix[i][i])
-            FPs = int(sum(confusion_matrix[:, i]) - TPs)
-            FNs = int(sum(confusion_matrix[i, :]) - TPs)
-            precision, recall = self.getPrecisionRecall(TPs, FPs, FNs)
+        global_stats = {
+            "accuracy": float(accuracy_score(y_true, y_pred)),
+            "macro_avg": {"precision": float(macro_p), "recall": float(macro_r), "f1": float(macro_f1)},
+            "micro_avg": {"precision": float(micro_p), "recall": float(micro_r), "f1": float(micro_f1)},
+            "weighted_avg": {"precision": float(weighted_p), "recall": float(weighted_r), "f1": float(weighted_f1)},
+        }
 
-            d = {'digit': i, 'TPs': TPs, 'FPs': FPs, 'FNs': FNs,
-                 'precision': precision, 'recall': recall}
-            statistics[i] = d
+        print("Per-class:", statistics)
+        print("Global:", global_stats)
 
-        print('Statistics per class: ' + str(statistics))
+        # Alternativa “bonita” (string) para imprimir:
+        print(classification_report(y_true, y_pred, labels=labels, digits=4, zero_division=0))
 
-        # -----------------------------------------
-        # Write the dictionary to a json file
-        # -----------------------------------------
-        json_filename = os.path.join(self.args['experiment_full_name'], 'statistics.json')
-        with open(json_filename, 'w') as f:
-            json.dump(statistics, f, indent=4)
+        # Guardar em JSON (podes juntar tudo num ficheiro só)
+        out = {"per_class": statistics, "global": global_stats}
+        json_filename = os.path.join(self.args["experiment_full_name"], "statistics.json")
+        with open(json_filename, "w") as f:
+            json.dump(out, f, indent=4)
 
-    def getPrecisionRecall(self, TPs, FPs, FNs):
+    #     # -----------------------------------------
+    #     #  Create the confusion matrix
+    #     # -----------------------------------------
+    #     confusion_matrix = np.zeros((10, 10), dtype=int)
 
-        den = TPs + FPs
-        if den == 0:
-            precision = None
-        else:
-            precision = TPs / (TPs + FPs)
+    #     for gt_class, predicted_class in zip(gt_classes, predicted_classes):
+    #         confusion_matrix[gt_class][predicted_class] += 1
 
-        den = TPs + FNs
-        if den == 0:
-            recall = None
-        else:
-            recall = TPs / (TPs + FNs)
+    #     # -----------------------------------------
+    #     #  Draw the confusion matrix
+    #     # -----------------------------------------
+    #     plt.figure(2)
+    #     class_names = [str(i) for i in range(10)]
+    #     title = 'Confusion Matrix'
+    #     seaborn.heatmap(confusion_matrix,
+    #                     annot=True,       # Anotar as células com os valores
+    #                     fmt='d',          # Formato dos números (inteiros para contagens)
+    #                     # Mapa de cores (pode escolher outro, ex: 'viridis', 'YlGnBu')
+    #                     cmap='Blues',
+    #                     cbar=True,        # Mostrar barra de cores
+    #                     xticklabels=class_names,  # Rótulos do eixo X (classes previstas)
+    #                     yticklabels=class_names)  # Rótulos do eixo Y (classes verdadeiras)
 
-        return precision, recall
+    #     plt.title(title, fontsize=16)  # Título do gráfico
+    #     plt.xlabel('Predicted classes', fontsize=14)  # Rótulo do eixo X
+    #     plt.ylabel('True classes', fontsize=14)  # Rótulo do eixo Y
+    #     plt.xticks(rotation=0, ha='right', fontsize=12)  # Rodar rótulos do X para melhor leitura
+    #     plt.yticks(rotation=0, fontsize=12)  # Rótulos do Y
+    #     plt.tight_layout()  # Ajusta o layout para evitar sobreposições
+
+    #     plt.savefig(os.path.join(self.args['experiment_full_name'],
+    #                              'confusion_matrix.png'))
+
+    #     # -----------------------------------------
+    #     #  Compute TPs, FPs, TNs, FNs for each class
+    #     # -----------------------------------------
+    #     statistics = {}
+
+    #     for i in range(10):
+
+    #         TPs = int(confusion_matrix[i][i])
+    #         FPs = int(sum(confusion_matrix[:, i]) - TPs)
+    #         FNs = int(sum(confusion_matrix[i, :]) - TPs)
+    #         precision, recall = self.getPrecisionRecall(TPs, FPs, FNs)
+
+    #         d = {'digit': i, 'TPs': TPs, 'FPs': FPs, 'FNs': FNs,
+    #              'precision': precision, 'recall': recall}
+    #         statistics[i] = d
+
+    #     print('Statistics per class: ' + str(statistics))
+
+    #     # -----------------------------------------
+    #     #  Write the dictionary to a json file
+    #     # -----------------------------------------
+    #     json_filename = os.path.join(self.args['experiment_full_name'], 'statistics.json')
+    #     with open(json_filename, 'w') as f:
+    #         json.dump(statistics, f, indent=4)
+
+    # def getPrecisionRecall(self, TPs, FPs, FNs):
+
+    #     den = TPs + FPs
+    #     if den == 0:
+    #         precision = None
+    #     else:
+    #         precision = TPs / (TPs + FPs)
+
+    #     den = TPs + FNs
+    #     if den == 0:
+    #         recall = None
+    #     else:
+    #         recall = TPs / (TPs + FNs)
+
+    #     return precision, recall

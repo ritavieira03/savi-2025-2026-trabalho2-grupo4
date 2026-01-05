@@ -1,82 +1,122 @@
 {
-    "0": {
-        "digit": 0,
-        "TPs": 979,
-        "FPs": 5,
-        "FNs": 1,
-        "precision": 0.9949186991869918,
-        "recall": 0.9989795918367347
+    "per_class": {
+        "0": {
+            "digit": 0,
+            "support": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "TPs": 0,
+            "FPs": 0,
+            "FNs": 0
+        },
+        "1": {
+            "digit": 1,
+            "support": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "TPs": 0,
+            "FPs": 0,
+            "FNs": 0
+        },
+        "2": {
+            "digit": 2,
+            "support": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "TPs": 0,
+            "FPs": 0,
+            "FNs": 0
+        },
+        "3": {
+            "digit": 3,
+            "support": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "TPs": 0,
+            "FPs": 0,
+            "FNs": 0
+        },
+        "4": {
+            "digit": 4,
+            "support": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "TPs": 0,
+            "FPs": 0,
+            "FNs": 0
+        },
+        "5": {
+            "digit": 5,
+            "support": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "TPs": 0,
+            "FPs": 0,
+            "FNs": 0
+        },
+        "6": {
+            "digit": 6,
+            "support": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "TPs": 0,
+            "FPs": 0,
+            "FNs": 0
+        },
+        "7": {
+            "digit": 7,
+            "support": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "TPs": 0,
+            "FPs": 0,
+            "FNs": 0
+        },
+        "8": {
+            "digit": 8,
+            "support": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "TPs": 0,
+            "FPs": 0,
+            "FNs": 0
+        },
+        "9": {
+            "digit": 9,
+            "support": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "TPs": 0,
+            "FPs": 0,
+            "FNs": 0
+        }
     },
-    "1": {
-        "digit": 1,
-        "TPs": 1132,
-        "FPs": 5,
-        "FNs": 3,
-        "precision": 0.9956024626209323,
-        "recall": 0.9973568281938326
-    },
-    "2": {
-        "digit": 2,
-        "TPs": 1028,
-        "FPs": 4,
-        "FNs": 4,
-        "precision": 0.9961240310077519,
-        "recall": 0.9961240310077519
-    },
-    "3": {
-        "digit": 3,
-        "TPs": 1009,
-        "FPs": 10,
-        "FNs": 1,
-        "precision": 0.9901864573110893,
-        "recall": 0.999009900990099
-    },
-    "4": {
-        "digit": 4,
-        "TPs": 978,
-        "FPs": 3,
-        "FNs": 4,
-        "precision": 0.9969418960244648,
-        "recall": 0.9959266802443992
-    },
-    "5": {
-        "digit": 5,
-        "TPs": 886,
-        "FPs": 3,
-        "FNs": 6,
-        "precision": 0.9966254218222722,
-        "recall": 0.9932735426008968
-    },
-    "6": {
-        "digit": 6,
-        "TPs": 951,
-        "FPs": 2,
-        "FNs": 7,
-        "precision": 0.9979013641133263,
-        "recall": 0.9926931106471816
-    },
-    "7": {
-        "digit": 7,
-        "TPs": 1021,
-        "FPs": 7,
-        "FNs": 7,
-        "precision": 0.9931906614785992,
-        "recall": 0.9931906614785992
-    },
-    "8": {
-        "digit": 8,
-        "TPs": 967,
-        "FPs": 1,
-        "FNs": 7,
-        "precision": 0.9989669421487604,
-        "recall": 0.9928131416837782
-    },
-    "9": {
-        "digit": 9,
-        "TPs": 1003,
-        "FPs": 6,
-        "FNs": 6,
-        "precision": 0.9940535183349851,
-        "recall": 0.9940535183349851
+    "global": {
+        "accuracy": NaN,
+        "macro_avg": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+        },
+        "micro_avg": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+        },
+        "weighted_avg": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+        }
     }
 }
