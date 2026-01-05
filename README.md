@@ -1,5 +1,5 @@
 # Grupo 4 | Trabalho 2 - SAVI 2025/2026
-
+(como se fosse um relatório)
 No âmbito da Unidade Curricular de SAVI, foi desenvolvido o trabalho de seguida apresentado, cujo o objetivo foi ...
 
 ## Organização do repositório
