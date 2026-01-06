@@ -24,11 +24,11 @@ class Dataset(torch.utils.data.Dataset):
         # create a list of image filenames to be loaded later
 
         # Create the image path varialbe
-        print(args['dataset_folder'])
+        # print(args['dataset_folder'])
         split_name = 'train' if is_train else 'test'
         image_path = os.path.join(args['dataset_folder'], split_name, 'images/')
 
-        print('image path is: ' + image_path)
+        # print('image path is: ' + image_path)
 
         self.image_filenames = glob.glob(image_path + "/*.jpg")
         self.image_filenames.sort()  # Sort the filenames to ensure consistent order
@@ -54,7 +54,7 @@ class Dataset(torch.utils.data.Dataset):
 
 
         # Select the percentage of examples specified in args
-        num_examples = round(len(self.image_filenames) * 0.1)
+        num_examples = round(len(self.image_filenames) * 1)
 
         # Reduce the size of the image_fileanames and labels
         self.image_filenames = self.image_filenames[0:num_examples]

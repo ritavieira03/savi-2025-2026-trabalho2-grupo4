@@ -115,7 +115,7 @@ class Trainer():
             # ---------------------------------
             #  End of the epoch training
             # ---------------------------------
-            print('Finished epoch ' + str(i) + ' out of ' + str(self.args['num_epochs']))
+            print('Finished epoch ' + str(i) + ' out of ' + str(self.args['num_epochs']-1))
             # print('batch_losses: ' + str(batch_losses))
 
             # update the training epoch losses

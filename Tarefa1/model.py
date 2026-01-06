@@ -236,7 +236,7 @@ class ModelBetterCNN(nn.Module):
         )
 
         print('Model architecture initialized with ' + str(self.getNumberOfParameters()) + ' parameters.')
-        summary(self, input_size=(2, 1, 28, 28))
+        # summary(self, input_size=(1, 1, 28, 28))
 
     def forward(self, x):
         x = self.features(x)
@@ -245,3 +245,4 @@ class ModelBetterCNN(nn.Module):
 
     def getNumberOfParameters(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+

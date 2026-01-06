@@ -16,7 +16,7 @@ import torch
 from dataset import Dataset
 
 from torchvision import transforms
-from model import ModelFullyconnected, ModelConvNet, ModelConvNet3, ModelBetterCNN
+from model import ModelFullyconnected, ModelConvNet, ModelConvNet3, ModelBetterCNN, ModelBetterCNN2
 from trainer import Trainer
 from datetime import datetime
 
@@ -40,8 +40,8 @@ def main():
     parser.add_argument('-bs', '--batch_size', type=int, default=64,
                         help='Batch size for training and testing.')
     parser.add_argument('-rt', '--resume_training', action='store_true',
-                        help='Resume training from last checkpoint if available.')
-    parser.add_argument('-ep', '--experiment_path', type=str, default='../experiments',
+                        help='Resume training from last checkpoint if available.')   # linha 40 do trainer.py
+    parser.add_argument('-ep', '--experiment_path', type=str, default='/experiments',
                         help='Path to save experiment results')
 
 
@@ -58,7 +58,7 @@ def main():
     # ------------------------------------
 
     args['experiment_full_name'] = args['experiment_path']
-    print('Starting experiment: ' + args['experiment_full_name'])
+    # print('Starting experiment: ' + args['experiment_full_name'])
 
     os.makedirs(args['experiment_full_name'], exist_ok=True)
 
@@ -75,6 +75,8 @@ def main():
     # model = ModelConvNet()
     # model = ModelConvNet3()
     model = ModelBetterCNN()
+
+    # print(str(model))
 
     # ------------------------------------
     #  Start training
