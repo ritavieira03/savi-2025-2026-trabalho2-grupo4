@@ -1,0 +1,2 @@
+label,xmin,ymin,xmax,ymax
+2,161,74,195,118
