@@ -241,25 +241,42 @@ class Trainer():
         predicted_classes = np.array(predicted_classes)
 
         # -----------------------------------------
-        # Accuracy
-        # -----------------------------------------
-        accuracy = accuracy_score(gt_classes, predicted_classes)
-        print(f"\nTest Accuracy: {accuracy*100:.2f}%")
-
-        # -----------------------------------------
         # Matriz de Confusão
         # -----------------------------------------
         cm = confusion_matrix(gt_classes, predicted_classes)
         print("Confusion Matrix:\n", cm)
 
-        plt.figure(figsize=(8,6))
-        seaborn.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=range(10), yticklabels=range(10))
-        plt.xlabel("Predicted labels")
-        plt.ylabel("True labels")
-        plt.title("Confusion Matrix")
-        plt.tight_layout()
-        plt.savefig(os.path.join(self.args['experiment_full_name'], 'confusion_matrix.png'))
+        # -----------------------------------------
+        # Draw the confusion matrix
+        # -----------------------------------------
+        plt.figure(2)
+        class_names = [str(i) for i in range(10)]
+        title = 'Confusion Matrix'
+        seaborn.heatmap(cm,
+                        annot=True,       # Anotar as células com os valores
+                        fmt='d',          # Formato dos números (inteiros para contagens)
+                        # Mapa de cores (pode escolher outro, ex: 'viridis', 'YlGnBu')
+                        cmap='Blues',
+                        cbar=True,        # Mostrar barra de cores
+                        xticklabels=class_names,  # Rótulos do eixo X (classes previstas)
+                        yticklabels=class_names)  # Rótulos do eixo Y (classes verdadeiras)
+
+        plt.title(title, fontsize=16)  # Título do gráfico
+        plt.xlabel('Predicted classes', fontsize=14)  # Rótulo do eixo X
+        plt.ylabel('True classes', fontsize=14)  # Rótulo do eixo Y
+        plt.xticks(rotation=0, ha='right', fontsize=12)  # Rodar rótulos do X para melhor leitura
+        plt.yticks(rotation=0, fontsize=12)  # Rótulos do Y
+        plt.tight_layout()  # Ajusta o layout para evitar sobreposições
+
+        plt.savefig(os.path.join(self.args['experiment_full_name'],
+                                 'confusion_matrix.png'))
         plt.close()
+
+        # -----------------------------------------
+        # Accuracy
+        # -----------------------------------------
+        accuracy = accuracy_score(gt_classes, predicted_classes)
+        print(f"\nTest Accuracy: {accuracy*100:.2f}%")
 
         # -----------------------------------------
         # Precision, Recall e F1-Score
@@ -297,6 +314,6 @@ class Trainer():
             'accuracy': float(accuracy)
         }
 
-        json_filename = os.path.join(self.args['experiment_full_name'], 'metrics.json')
+        json_filename = os.path.join(self.args['experiment_full_name'], 'statistics.json')
         with open(json_filename, 'w') as f:
             json.dump(metrics_dict, f, indent=4)
