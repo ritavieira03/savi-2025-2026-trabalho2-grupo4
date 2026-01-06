@@ -216,8 +216,13 @@ class Trainer():
 
     def evaluate(self):
 
+<<<<<<< HEAD
         self.model.eval()
         print('\nEvaliação do modelo')
+=======
+        self.model.eval()  # modo avaliação
+        print('\nAvaliação do modelo')
+>>>>>>> 090d5ada884631e01814c00a0e70435f09e04146
 
         gt_classes = []
         predicted_classes = []
@@ -239,7 +244,7 @@ class Trainer():
 
         ## Matriz de Confusão
         cm = confusion_matrix(gt_classes, predicted_classes)
-        print("Confusion Matrix:\n", cm)
+        # print("Confusion Matrix:\n", cm)
 
         ## Accuracy
         accuracy = accuracy_score(gt_classes, predicted_classes)
