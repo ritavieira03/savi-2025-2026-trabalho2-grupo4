@@ -24,7 +24,7 @@ def read_labels(label_path: pathlib.Path) -> typing.Tuple[np.ndarray]:
     BBOXES_XYXY = []
     with open(label_path, "r") as fp:
         for line in list(fp.readlines())[1:]:
-            label, xmin, ymin, xmax, ymax = [int(_) for _ in line.split(",")]
+            label, xmin, ymin, xmax, ymax = [int(_) for _ in line.split(", ")]
             labels.append(label)
             BBOXES_XYXY.append([xmin, ymin, xmax, ymax])
     return np.array(labels), np.array(BBOXES_XYXY)
