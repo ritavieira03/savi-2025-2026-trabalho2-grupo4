@@ -10,12 +10,7 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import json
 from tqdm import tqdm
-from sklearn.metrics import (
-    confusion_matrix,
-    precision_recall_fscore_support,
-    classification_report,
-    accuracy_score,
-)
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, f1_score
 
 
 class Trainer():
@@ -220,176 +215,88 @@ class Trainer():
 
     def evaluate(self):
 
-        # -----------------------------------------
-        #  Iterate over test batches and compute the ground trutch and predicted  values for all examples
-        # -----------------------------------------
-        self.model.eval()  # set model to evaluation mode
-        num_batches = len(self.test_dataloader)
-
-        self.gts = []  # list of ground truth labels
-        self.preds = []  # list of predicted labels
+        self.model.eval()  # modo avaliação
 
         gt_classes = []
         predicted_classes = []
-        for batch_idx, (image_tensor, label_gt_tensor) in tqdm(
-                enumerate(self.test_dataloader), total=num_batches):  # type: ignore
 
+        # -----------------------------------------
+        # Recolher predições
+        # -----------------------------------------
+        for batch_idx, (image_tensor, label_gt_tensor) in tqdm(
+                enumerate(self.test_dataloader), total=len(self.test_dataloader)):
+
+            # Transformar one-hot em classes
             batch_gt_classes = label_gt_tensor.argmax(dim=1).tolist()
 
-            # Compute the predicted labels
+            # Forward pass
             label_pred_tensor = self.model.forward(image_tensor)
-
-            # Compute the probabilities using softmax
             label_pred_probabilities_tensor = torch.softmax(label_pred_tensor, dim=1)
             batch_predicted_classes = label_pred_probabilities_tensor.argmax(dim=1).tolist()
-
-            # print('batch_gt_classes: ' + str(batch_gt_classes))
-            # print('batch_predicted_classes: ' + str(batch_predicted_classes))
 
             gt_classes.extend(batch_gt_classes)
             predicted_classes.extend(batch_predicted_classes)
 
-        print('Ground truth classes: ' + str(gt_classes))
-        print('Predicted classes: ' + str(predicted_classes))
+        gt_classes = np.array(gt_classes)
+        predicted_classes = np.array(predicted_classes)
 
+        # -----------------------------------------
+        # Accuracy
+        # -----------------------------------------
+        accuracy = accuracy_score(gt_classes, predicted_classes)
+        print(f"\nTest Accuracy: {accuracy*100:.2f}%")
 
-        ## Calcular métricas detalhadas usando sklearn
-        y_true = []
-        y_pred = []
+        # -----------------------------------------
+        # Matriz de Confusão
+        # -----------------------------------------
+        cm = confusion_matrix(gt_classes, predicted_classes)
+        print("Confusion Matrix:\n", cm)
 
-        # Exemplo (adapta ao teu loop):
-        # for images, labels in test_loader:
-        #     logits = model(images.to(device))
-        #     preds = logits.argmax(dim=1)
-        #     y_true.extend(labels.cpu().numpy().tolist())
-        #     y_pred.extend(preds.cpu().numpy().tolist())
+        plt.figure(figsize=(8,6))
+        seaborn.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=range(10), yticklabels=range(10))
+        plt.xlabel("Predicted labels")
+        plt.ylabel("True labels")
+        plt.title("Confusion Matrix")
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.args['experiment_full_name'], 'confusion_matrix.png'))
+        plt.close()
 
-        y_true = np.array(y_true)
-        y_pred = np.array(y_pred)
+        # -----------------------------------------
+        # Precision, Recall e F1-Score
+        # -----------------------------------------
+        precision_per_class = precision_score(gt_classes, predicted_classes, labels=range(10), average=None)
+        recall_per_class    = recall_score(gt_classes, predicted_classes, labels=range(10), average=None)
+        f1_per_class        = f1_score(gt_classes, predicted_classes, labels=range(10), average=None)
 
-        labels = np.arange(10)
+        # Macro média
+        precision_macro = precision_score(gt_classes, predicted_classes, labels=range(10), average='macro')
+        recall_macro    = recall_score(gt_classes, predicted_classes, labels=range(10), average='macro')
+        f1_macro        = f1_score(gt_classes, predicted_classes, labels=range(10), average='macro')
 
-        # Matriz de confusão (se ainda quiseres)
-        cm = confusion_matrix(y_true, y_pred, labels=labels)
+        print("\nMetrics per class:")
+        for i in range(10):
+            print(f"Class {i}: Precision={precision_per_class[i]:.4f}, Recall={recall_per_class[i]:.4f}, F1={f1_per_class[i]:.4f}")
 
-        # Métricas por classe
-        prec, rec, f1, support = precision_recall_fscore_support(
-            y_true, y_pred,
-            labels=labels,
-            average=None,          # <- por classe
-            zero_division=0        # <- evita warnings quando não há previsões para uma classe
-        )
+        print(f"\nMacro Average: Precision={precision_macro:.4f}, Recall={recall_macro:.4f}, F1={f1_macro:.4f}")
 
-        statistics = {}
-        for i, digit in enumerate(labels):
-            statistics[int(digit)] = {
-                "digit": int(digit),
-                "support": int(support[i]),
-                "precision": float(prec[i]),
-                "recall": float(rec[i]),
-                "f1": float(f1[i])
+        # -----------------------------------------
+        # Guardar métricas em JSON
+        # -----------------------------------------
+        metrics_dict = {}
+        for i in range(10):
+            metrics_dict[i] = {
+                'precision': float(precision_per_class[i]),
+                'recall': float(recall_per_class[i]),
+                'f1_score': float(f1_per_class[i])
             }
 
-        # Médias globais
-        macro_p, macro_r, macro_f1, _ = precision_recall_fscore_support(
-            y_true, y_pred, labels=labels, average="macro", zero_division=0
-        )
-        micro_p, micro_r, micro_f1, _ = precision_recall_fscore_support(
-            y_true, y_pred, labels=labels, average="micro", zero_division=0
-        )
-        weighted_p, weighted_r, weighted_f1, _ = precision_recall_fscore_support(
-            y_true, y_pred, labels=labels, average="weighted", zero_division=0
-        )
-
-        global_stats = {
-            "accuracy": float(accuracy_score(y_true, y_pred)),
-            "macro_avg": {"precision": float(macro_p), "recall": float(macro_r), "f1": float(macro_f1)},
-            "micro_avg": {"precision": float(micro_p), "recall": float(micro_r), "f1": float(micro_f1)},
-            "weighted_avg": {"precision": float(weighted_p), "recall": float(weighted_r), "f1": float(weighted_f1)},
+        metrics_dict['macro_average'] = {
+            'precision': float(precision_macro),
+            'recall': float(recall_macro),
+            'f1_score': float(f1_macro),
+            'accuracy': float(accuracy)
         }
 
-        print("Per-class:", statistics)
-        print("Global:", global_stats)
-
-        # Alternativa “bonita” (string) para imprimir:
-        print(classification_report(y_true, y_pred, labels=labels, digits=4, zero_division=0))
-
-        # Guardar em JSON (podes juntar tudo num ficheiro só)
-        out = {"per_class": statistics, "global": global_stats}
-        json_filename = os.path.join(self.args["experiment_full_name"], "statistics.json")
-        with open(json_filename, "w") as f:
-            json.dump(out, f, indent=4)
-
-    #     # -----------------------------------------
-    #     #  Create the confusion matrix
-    #     # -----------------------------------------
-    #     confusion_matrix = np.zeros((10, 10), dtype=int)
-
-    #     for gt_class, predicted_class in zip(gt_classes, predicted_classes):
-    #         confusion_matrix[gt_class][predicted_class] += 1
-
-    #     # -----------------------------------------
-    #     #  Draw the confusion matrix
-    #     # -----------------------------------------
-    #     plt.figure(2)
-    #     class_names = [str(i) for i in range(10)]
-    #     title = 'Confusion Matrix'
-    #     seaborn.heatmap(confusion_matrix,
-    #                     annot=True,       # Anotar as células com os valores
-    #                     fmt='d',          # Formato dos números (inteiros para contagens)
-    #                     # Mapa de cores (pode escolher outro, ex: 'viridis', 'YlGnBu')
-    #                     cmap='Blues',
-    #                     cbar=True,        # Mostrar barra de cores
-    #                     xticklabels=class_names,  # Rótulos do eixo X (classes previstas)
-    #                     yticklabels=class_names)  # Rótulos do eixo Y (classes verdadeiras)
-
-    #     plt.title(title, fontsize=16)  # Título do gráfico
-    #     plt.xlabel('Predicted classes', fontsize=14)  # Rótulo do eixo X
-    #     plt.ylabel('True classes', fontsize=14)  # Rótulo do eixo Y
-    #     plt.xticks(rotation=0, ha='right', fontsize=12)  # Rodar rótulos do X para melhor leitura
-    #     plt.yticks(rotation=0, fontsize=12)  # Rótulos do Y
-    #     plt.tight_layout()  # Ajusta o layout para evitar sobreposições
-
-    #     plt.savefig(os.path.join(self.args['experiment_full_name'],
-    #                              'confusion_matrix.png'))
-
-    #     # -----------------------------------------
-    #     #  Compute TPs, FPs, TNs, FNs for each class
-    #     # -----------------------------------------
-    #     statistics = {}
-
-    #     for i in range(10):
-
-    #         TPs = int(confusion_matrix[i][i])
-    #         FPs = int(sum(confusion_matrix[:, i]) - TPs)
-    #         FNs = int(sum(confusion_matrix[i, :]) - TPs)
-    #         precision, recall = self.getPrecisionRecall(TPs, FPs, FNs)
-
-    #         d = {'digit': i, 'TPs': TPs, 'FPs': FPs, 'FNs': FNs,
-    #              'precision': precision, 'recall': recall}
-    #         statistics[i] = d
-
-    #     print('Statistics per class: ' + str(statistics))
-
-    #     # -----------------------------------------
-    #     #  Write the dictionary to a json file
-    #     # -----------------------------------------
-    #     json_filename = os.path.join(self.args['experiment_full_name'], 'statistics.json')
-    #     with open(json_filename, 'w') as f:
-    #         json.dump(statistics, f, indent=4)
-
-    # def getPrecisionRecall(self, TPs, FPs, FNs):
-
-    #     den = TPs + FPs
-    #     if den == 0:
-    #         precision = None
-    #     else:
-    #         precision = TPs / (TPs + FPs)
-
-    #     den = TPs + FNs
-    #     if den == 0:
-    #         recall = None
-    #     else:
-    #         recall = TPs / (TPs + FNs)
-
-    #     return precision, recall
+        json_filename = os.path.join(self.args['experiment_full_name'], 'metrics.json')
+        with open(json_filename, 'w') as f:
+            json.dump(metrics_dict, f, indent=4)

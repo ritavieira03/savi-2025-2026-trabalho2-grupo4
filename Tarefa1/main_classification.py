@@ -35,7 +35,7 @@ def main():
 
     parser.add_argument('-df', '--dataset_folder', type=str,
                         default='../mnist')
-    parser.add_argument('-ne', '--num_epochs', type=int, default=8,
+    parser.add_argument('-ne', '--num_epochs', type=int, default=15,
                         help='Number of epochs for training')
     parser.add_argument('-bs', '--batch_size', type=int, default=64,
                         help='Batch size for training and testing.')
