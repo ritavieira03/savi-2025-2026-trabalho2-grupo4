@@ -143,9 +143,9 @@ def generate_dataset(
         cv2.imwrite(str(image_dir / f"{image_id}.png"), im)
         
         with open(label_dir / f"{image_id}.txt", "w", encoding="utf-8") as fp:
-            fp.write("label,xmin,ymin,xmax,ymax\n")
+            fp.write("label, (xmin, ymin, xmax, ymax)\n")
             for l, b in zip(labels, bboxes):
-                fp.write(f"{l},{b[0]},{b[1]},{b[2]},{b[3]}\n")
+                fp.write(f"{l}, ({b[0]},{b[1]},{b[2]},{b[3]})\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gerador de Dataset MNIST Detection")
