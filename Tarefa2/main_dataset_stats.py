@@ -31,7 +31,13 @@ def read_labels(label_path: pathlib.Path) -> typing.Tuple[np.ndarray]:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("directory")
+    parser.add_argument(
+        "directory",
+        nargs="?",
+        default="./data/mnist_detection/test/",
+        help="Diretório base do dataset (default: ./data/mnist_detection/test/)"
+    )
+
     args = parser.parse_args()
 
     base_path = pathlib.Path(args.directory)
