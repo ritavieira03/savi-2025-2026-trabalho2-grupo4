@@ -2,6 +2,7 @@
 
 import argparse
 import pathlib
+import shutil
 import cv2
 import numpy as np
 import tqdm
@@ -62,12 +63,16 @@ def tight_bbox(digit, orig_bbox):
     return [
         int(xmin_old + x_min_rel),
         int(ymin_old + y_min_rel),
-        int(xmin_old + x_max_rel + 1), # +1 para ser exclusivo no estilo OpenCV/NumPy
+        int(xmin_old + x_max_rel + 1),
         int(ymin_old + y_max_rel + 1)
     ]
 
 def check_dataset_health(dirpath: pathlib.Path, num_images: int):
-    """Verifica se o dataset já existe sem interromper o programa abruptamente."""
+    
+    ## Verifica se o dataset já existe, se sim, substitui-o
+    if dirpath.exists():
+        shutil.rmtree(dirpath)
+    
     if not dirpath.is_dir():
         return False
     
@@ -75,7 +80,7 @@ def check_dataset_health(dirpath: pathlib.Path, num_images: int):
         impath = dirpath / "images" / f"{image_id}.png"
         label_path = dirpath / "labels" / f"{image_id}.txt"
         if not impath.is_file() or not label_path.is_file():
-            print(f"(!) Dataset incompleto em {dirpath}. A regenerar...")
+            print(f" (!) Dataset incompleto em {dirpath}. A regenerar...")
             return False
     return True
 
@@ -86,6 +91,7 @@ def generate_dataset(
     min_digit_size: int,
     imsize: int,
     max_digits_per_image: int,
+    min_digits_per_image: int,
     mnist_images: np.ndarray,
     mnist_labels: np.ndarray,
 ):
@@ -105,8 +111,7 @@ def generate_dataset(
         bboxes = []
 
         # Garante pelo menos 1 dígito
-        n_digits = np.random.randint(1, max_digits_per_image + 1)
-
+        n_digits = np.random.randint(min_digits_per_image, max_digits_per_image + 1)
         for _ in range(n_digits):
             for _attempt in range(100): # Evita loop infinito se a imagem estiver cheia
                 width = np.random.randint(min_digit_size, max_digit_size + 1)
@@ -147,11 +152,12 @@ if __name__ == "__main__":
     parser.add_argument("--base-path", default="data/mnist_detection")
     parser.add_argument("--mnist-root", default="data/mnist_raw")
     parser.add_argument("--imsize", default=128, type=int)
-    parser.add_argument("--max-digit-size", default=100, type=int)
-    parser.add_argument("--min-digit-size", default=15, type=int)
-    parser.add_argument("--num-train-images", default=10000, type=int)
-    parser.add_argument("--num-test-images", default=1000, type=int)
+    parser.add_argument("--max-digit-size", default=36, type=int)
+    parser.add_argument("--min-digit-size", default=22, type=int)
+    parser.add_argument("--num-train-images", default=60000, type=int)
+    parser.add_argument("--num-test-images", default=10000, type=int)
     parser.add_argument("--max-digits-per-image", default=5, type=int)
+    parser.add_argument("--min-digits-per-image", default=3, type=int)
 
     args = parser.parse_args()
 
@@ -167,5 +173,5 @@ if __name__ == "__main__":
         generate_dataset(
             pathlib.Path(args.base_path) / name,
             n, args.max_digit_size, args.min_digit_size,
-            args.imsize, args.max_digits_per_image, X, Y
+            args.imsize, args.max_digits_per_image, args.min_digits_per_image, X, Y
         )
