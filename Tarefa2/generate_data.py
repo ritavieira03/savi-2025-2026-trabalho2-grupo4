@@ -146,7 +146,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gerador de Dataset MNIST Detection")
     parser.add_argument("--base-path", default="data/mnist_detection")
     parser.add_argument("--mnist-root", default="data/mnist_raw")
-    parser.add_argument("--imsize", default=300, type=int)
+    parser.add_argument("--imsize", default=128, type=int)
     parser.add_argument("--max-digit-size", default=100, type=int)
     parser.add_argument("--min-digit-size", default=15, type=int)
     parser.add_argument("--num-train-images", default=10000, type=int)
