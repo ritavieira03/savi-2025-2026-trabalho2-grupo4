@@ -88,7 +88,7 @@ class Trainer():
                 test_batch_losses.append(batch_loss.item())
                 
 
-            print('Época ' + str(i) + ' terminada de ' + str(self.args['num_epochs']-1))
+            print('Época terminada: ' + str(i) + ' de ' + str(self.args['num_epochs']-1))
             
             ## Atualizar o training epoch losses
             train_epoch_loss = np.mean(train_batch_losses)
@@ -295,7 +295,7 @@ class Trainer():
         ])
 
         ## Figura
-        fig_h = 0.1 * len(row_labels)+ 1.0
+        fig_h = 0.55 * len(row_labels)+ 0.5
         fig, ax = plt.subplots(figsize=(10, fig_h))
         ax.axis("off")
 
