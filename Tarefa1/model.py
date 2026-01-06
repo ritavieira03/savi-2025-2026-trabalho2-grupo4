@@ -21,16 +21,11 @@ class ModelFullyconnected(nn.Module):
 
     def forward(self, x):
 
-        # print('Forward method called ...')
-        # print('Input x.shape = ' + str(x.shape))
-
         # flatten the input to a vector of 1x28x28
         x = x.view(x.size(0), -1)
-        # print('Input x.shape = ' + str(x.shape))
 
         # Now we can pass through the fully connected layer
         y = self.fc(x)
-        # print('Output y.shape = ' + str(y.shape))
 
         return y
 
@@ -42,12 +37,7 @@ class ModelConvNet(nn.Module):
 
     def __init__(self):
 
-        super(ModelConvNet, self).__init__()  # call the parent constructor
-
-        nrows = 28
-        ncols = 28
-        ninputs = nrows * ncols
-        noutputs = 10
+        super(ModelConvNet, self).__init__()
 
         # Define first conv layer
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, padding=1)
@@ -81,30 +71,15 @@ class ModelConvNet(nn.Module):
     def forward(self, x):
 
         print('Forward method called ...')
-
-        print('Input x.shape = ' + str(x.shape))
-
         x = self.conv1(x)
-        print('After conv1 x.shape = ' + str(x.shape))
-
         x = self.pool1(x)
-        print('After pool1 x.shape = ' + str(x.shape))
-
         x = self.conv2(x)
-        print('After conv2 x.shape = ' + str(x.shape))
-
         x = self.pool2(x)
-        print('After pool2 x.shape = ' + str(x.shape))
 
         # Transform to latent vector
         x = x.view(-1, 64*7*7)
-        print('After flattening x.shape = ' + str(x.shape))
-
         x = self.fc1(x)
-        print('After fc1 x.shape = ' + str(x.shape))
-
         y = self.fc2(x)
-        print('Output y.shape = ' + str(y.shape))
 
         return y
 
@@ -114,12 +89,7 @@ class ModelConvNet3(nn.Module):
 
     def __init__(self):
 
-        super(ModelConvNet3, self).__init__()  # call the parent constructor
-
-        nrows = 28
-        ncols = 28
-        ninputs = nrows * ncols
-        noutputs = 10
+        super(ModelConvNet3, self).__init__()
 
         # Define first conv layer
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, padding=1)
@@ -160,82 +130,92 @@ class ModelConvNet3(nn.Module):
 
     def forward(self, x):
 
-        # print('Forward method called ...')
-
-        # print('Input x.shape = ' + str(x.shape))
-
         x = self.conv1(x)
-        # print('After conv1 x.shape = ' + str(x.shape))
-
         x = self.pool1(x)
-        # print('After pool1 x.shape = ' + str(x.shape))
-
         x = self.conv2(x)
-        # print('After conv2 x.shape = ' + str(x.shape))
-
         x = self.pool2(x)
-        # print('After pool2 x.shape = ' + str(x.shape))
-
         x = self.conv3(x)
-        # print('After conv3 x.shape = ' + str(x.shape))
-
         x = self.pool3(x)
-        # print('After pool3 x.shape = ' + str(x.shape))
 
         # Transform to latent vector
         x = x.view(-1, 128*2*2)
-        # print('After flattening x.shape = ' + str(x.shape))
 
         x = self.fc1(x)
-        # print('After fc1 x.shape = ' + str(x.shape))
 
         y = self.fc2(x)
-        # print('Output y.shape = ' + str(y.shape))
 
         return y
 
 
+## Nova arquitetura de modelo CNN
 class ModelBetterCNN(nn.Module):
 
     def __init__(self):
         super(ModelBetterCNN, self).__init__()
 
+        ## Bloco de extração de características
         self.features = nn.Sequential(
-            # Bloco 1: 1x28x28 -> 32x28x28 -> pool -> 32x14x14
-            nn.Conv2d(1, 32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
+            
+            ## Bloco 1: 1x28x28 -> 32x28x28 -> pool -> 32x14x14
 
+            ## Primeira convolução: aumenta a profundidade de 1 para 32 canais
+            nn.Conv2d(1, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),      ## Normalização para estabilizar o treino
+            nn.ReLU(inplace=True),   ## Função de ativação não linear para aprender relações complexas
+            ## a saída é 32x28x28
+
+            ## Segunda convolução: refina as características extraídas
             nn.Conv2d(32, 32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
+            ## a saída é 32x28x28
 
+            ## Redução da dimensão espacial (28x28 -> 14x14)
             nn.MaxPool2d(kernel_size=2, stride=2),
+
+            ## Dropout para regularização
             nn.Dropout2d(p=0.25),
 
-            # Bloco 2: 32x14x14 -> 64x14x14 -> pool -> 64x7x7
+
+            ## Bloco 2: 32x14x14 -> 64x14x14 -> pool -> 64x7x7
+
+            ## Primeira camada de convulção
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
+            ## a saída é 64x14x14
 
+            ## Segunda camada de convulção
             nn.Conv2d(64, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
+            ## a saída é 64x14x14
 
+            ## Nova redução da dimensão espacial (14x14 -> 7x7)
             nn.MaxPool2d(kernel_size=2, stride=2),
+
+            ## Dropout para regularização
             nn.Dropout2d(p=0.25),
         )
 
+        ## Bloco de classificação
         self.classifier = nn.Sequential(
+            ## Converte os mapas de características num vetor 1D
             nn.Flatten(),
+
+            ## Primeira camada fully connected
             nn.Linear(64 * 7 * 7, 256),
             nn.BatchNorm1d(256),
+
             nn.ReLU(inplace=True),
             nn.Dropout(p=0.5),
+
+            ## Segunda camada fully connected
             nn.Linear(256, 10),
+            ## saída 10
         )
 
-        print('Model architecture initialized with ' + str(self.getNumberOfParameters()) + ' parameters.')
+        print('Arquitetura do modelo inicializada com ' + str(self.getNumberOfParameters()) + ' parâmetros.')
         # summary(self, input_size=(1, 1, 28, 28))
 
     def forward(self, x):
