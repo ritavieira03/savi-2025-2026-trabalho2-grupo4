@@ -46,7 +46,11 @@ def main():
 
 
     args = vars(parser.parse_args())
-    print(args)
+    # print(args)
+    print(f"Nº de épocas : {args['num_epochs']}")
+    print(f"Tamanho do Batch: {args['batch_size']}")
+    print("Treino retomado!" if args["resume_training"] else "Novo treino!")
+
 
     # ------------------------------------
     #  Register the sigtinthandler

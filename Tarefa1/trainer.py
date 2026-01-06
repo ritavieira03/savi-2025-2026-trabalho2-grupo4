@@ -10,7 +10,8 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import json
 from tqdm import tqdm
-from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, f1_score
+import pandas as pd
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, f1_score, classification_report
 
 
 class Trainer():
@@ -215,22 +216,17 @@ class Trainer():
 
     def evaluate(self):
 
-        self.model.eval()  # modo avaliação
+        self.model.eval()
         print('\nEvaliação do modelo')
 
         gt_classes = []
         predicted_classes = []
 
-        # -----------------------------------------
-        # Recolher predições
-        # -----------------------------------------
         for batch_idx, (image_tensor, label_gt_tensor) in tqdm(
                 enumerate(self.test_dataloader), total=len(self.test_dataloader)):
 
-            # Transformar one-hot em classes
             batch_gt_classes = label_gt_tensor.argmax(dim=1).tolist()
 
-            # Forward pass
             label_pred_tensor = self.model.forward(image_tensor)
             label_pred_probabilities_tensor = torch.softmax(label_pred_tensor, dim=1)
             batch_predicted_classes = label_pred_probabilities_tensor.argmax(dim=1).tolist()
@@ -241,15 +237,129 @@ class Trainer():
         gt_classes = np.array(gt_classes)
         predicted_classes = np.array(predicted_classes)
 
-        # -----------------------------------------
-        # Matriz de Confusão
-        # -----------------------------------------
+        ## Matriz de Confusão
         cm = confusion_matrix(gt_classes, predicted_classes)
         print("Confusion Matrix:\n", cm)
 
-        # -----------------------------------------
-        # Draw the confusion matrix
-        # -----------------------------------------
+        ## Accuracy
+        accuracy = accuracy_score(gt_classes, predicted_classes)
+        print(f"\nTest Accuracy: {accuracy*100:.4f}%")
+
+        ## Precision, Recall e F1-Score
+        precision_per_class = precision_score(gt_classes, predicted_classes, labels=range(10), average=None)
+        recall_per_class    = recall_score(gt_classes, predicted_classes, labels=range(10), average=None)
+        f1_per_class        = f1_score(gt_classes, predicted_classes, labels=range(10), average=None)
+
+        ## Média Macro
+        precision_macro = precision_score(gt_classes, predicted_classes, labels=range(10), average='macro')
+        recall_macro    = recall_score(gt_classes, predicted_classes, labels=range(10), average='macro')
+        f1_macro        = f1_score(gt_classes, predicted_classes, labels=range(10), average='macro')
+
+        print(Style.BRIGHT + "\nMetrics per class:" + Style.RESET_ALL)
+        for i in range(10):
+            print(f"Classe {i}: Precision = {precision_per_class[i]:.4f}, Recall = {recall_per_class[i]:.4f}, F1 = {f1_per_class[i]:.4f}")
+
+        print(f"\nMédia Macro: Precision = {precision_macro:.4f}, Recall = {recall_macro:.4f}, F1 = {f1_macro:.4f}")
+
+        ## Guardar os reultados em JSON
+        metrics_dict = {}
+        for i in range(10):
+            metrics_dict[i] = {
+                'precision': float(precision_per_class[i]),
+                'recall': float(recall_per_class[i]),
+                'f1_score': float(f1_per_class[i])
+            }
+
+        metrics_dict['macro_average'] = {
+            'precision': float(precision_macro),
+            'recall': float(recall_macro),
+            'f1_score': float(f1_macro),
+            'accuracy': float(accuracy)
+        }
+
+        json_filename = os.path.join(self.args['experiment_full_name'], 'statistics.json')
+        with open(json_filename, 'w') as f:
+            json.dump(metrics_dict, f, indent=4)
+
+
+        ## Desenhar a matriz de confusão em PNG
+        self.plot_confusion_matrix(cm)
+
+        ## Desenhar a tabela de resultados em PNG
+        self.save_metrics_table_png(precision_per_class, recall_per_class, f1_per_class,
+                                    precision_macro, recall_macro, f1_macro)
+
+
+    def save_metrics_table_png(self,
+    precision_per_class, recall_per_class, f1_per_class,
+    precision_macro, recall_macro, f1_macro):
+    
+        # Número de classes
+        n_classes = len(precision_per_class)
+
+        # Colunas
+        col_labels = ["Precision", "Recall", "F1_score"]
+
+        # Linhas
+        row_labels = [str(i) for i in range(n_classes)] + ["Média Macro"]
+
+        cell_text = []
+        for i in range(n_classes):
+            cell_text.append([
+                f"{precision_per_class[i]:.3f}",
+                f"{recall_per_class[i]:.3f}",
+                f"{f1_per_class[i]:.3f}"
+            ])
+
+        cell_text.append([
+            f"{precision_macro:.3f}",
+            f"{recall_macro:.3f}",
+            f"{f1_macro:.3f}"
+        ])
+
+        # Figura
+        fig_h = 0.55 * len(row_labels) + 1.0
+        fig, ax = plt.subplots(figsize=(10, fig_h))
+        ax.axis("off")
+
+        tbl = ax.table(
+            cellText=cell_text,
+            rowLabels=row_labels,
+            colLabels=col_labels,
+            cellLoc="center",
+            loc="center"
+        )
+
+        tbl.auto_set_font_size(False)
+        tbl.set_fontsize(12)
+        tbl.scale(1.0, 1.6)
+
+        azul_clarinho = "#dbeafe"  # azul bem clarinho
+
+        # Estilo geral da tabela
+        for (r, c), cell in tbl.get_celld().items():
+            cell.set_edgecolor("black")
+            cell.set_linewidth(1.2)
+
+            # Estilo das colunas
+            if r == 0:
+                cell.set_facecolor(azul_clarinho)
+                cell.set_text_props(weight="bold")
+
+            # Estilo das linhas
+            if c == 0:
+                cell.set_facecolor(azul_clarinho)
+                cell.set_text_props(weight="bold")
+
+        plt.tight_layout()
+
+        out_path = os.path.join(self.args["experiment_full_name"], "results_table.png")
+        plt.savefig(out_path, dpi=200)
+        plt.close(fig)
+
+
+    def plot_confusion_matrix(self, cm):
+        
         plt.figure(2)
         class_names = [str(i) for i in range(10)]
         title = 'Confusion Matrix'
@@ -272,49 +382,3 @@ class Trainer():
         plt.savefig(os.path.join(self.args['experiment_full_name'],
                                  'confusion_matrix.png'))
         plt.close()
-
-        # -----------------------------------------
-        # Accuracy
-        # -----------------------------------------
-        accuracy = accuracy_score(gt_classes, predicted_classes)
-        print(f"\nTest Accuracy: {accuracy*100:.2f}%")
-
-        # -----------------------------------------
-        # Precision, Recall e F1-Score
-        # -----------------------------------------
-        precision_per_class = precision_score(gt_classes, predicted_classes, labels=range(10), average=None)
-        recall_per_class    = recall_score(gt_classes, predicted_classes, labels=range(10), average=None)
-        f1_per_class        = f1_score(gt_classes, predicted_classes, labels=range(10), average=None)
-
-        # Macro média
-        precision_macro = precision_score(gt_classes, predicted_classes, labels=range(10), average='macro')
-        recall_macro    = recall_score(gt_classes, predicted_classes, labels=range(10), average='macro')
-        f1_macro        = f1_score(gt_classes, predicted_classes, labels=range(10), average='macro')
-
-        print("\nMetrics per class:")
-        for i in range(10):
-            print(f"Class {i}: Precision={precision_per_class[i]:.4f}, Recall={recall_per_class[i]:.4f}, F1={f1_per_class[i]:.4f}")
-
-        print(f"\nMacro Average: Precision={precision_macro:.4f}, Recall={recall_macro:.4f}, F1={f1_macro:.4f}")
-
-        # -----------------------------------------
-        # Guardar métricas em JSON
-        # -----------------------------------------
-        metrics_dict = {}
-        for i in range(10):
-            metrics_dict[i] = {
-                'precision': float(precision_per_class[i]),
-                'recall': float(recall_per_class[i]),
-                'f1_score': float(f1_per_class[i])
-            }
-
-        metrics_dict['macro_average'] = {
-            'precision': float(precision_macro),
-            'recall': float(recall_macro),
-            'f1_score': float(f1_macro),
-            'accuracy': float(accuracy)
-        }
-
-        json_filename = os.path.join(self.args['experiment_full_name'], 'statistics.json')
-        with open(json_filename, 'w') as f:
-            json.dump(metrics_dict, f, indent=4)
