@@ -216,6 +216,7 @@ class Trainer():
     def evaluate(self):
 
         self.model.eval()  # modo avaliação
+        print('\nEvaliação do modelo')
 
         gt_classes = []
         predicted_classes = []

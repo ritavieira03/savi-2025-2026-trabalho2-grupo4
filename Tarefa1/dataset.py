@@ -54,7 +54,7 @@ class Dataset(torch.utils.data.Dataset):
 
 
         # Select the percentage of examples specified in args
-        num_examples = round(len(self.image_filenames) * 1)
+        num_examples = round(len(self.image_filenames) * 0.1)
 
         # Reduce the size of the image_fileanames and labels
         self.image_filenames = self.image_filenames[0:num_examples]

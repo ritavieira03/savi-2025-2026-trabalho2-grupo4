@@ -16,7 +16,7 @@ import torch
 from dataset import Dataset
 
 from torchvision import transforms
-from model import ModelFullyconnected, ModelConvNet, ModelConvNet3, ModelBetterCNN, ModelBetterCNN2
+from model import ModelFullyconnected, ModelConvNet, ModelConvNet3, ModelBetterCNN
 from trainer import Trainer
 from datetime import datetime
 
@@ -41,7 +41,7 @@ def main():
                         help='Batch size for training and testing.')
     parser.add_argument('-rt', '--resume_training', action='store_true',
                         help='Resume training from last checkpoint if available.')   # linha 40 do trainer.py
-    parser.add_argument('-ep', '--experiment_path', type=str, default='/experiments',
+    parser.add_argument('-ep', '--experiment_path', type=str, default='./experiments',
                         help='Path to save experiment results')
 
 
