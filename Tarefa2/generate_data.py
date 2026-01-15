@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# shebang line for linux / mac
 
 import argparse
 import pathlib
@@ -145,15 +146,15 @@ def generate_dataset(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gerador de Dataset MNIST Detection")
-    parser.add_argument("--base-path", default="data/mnist_detection")
-    parser.add_argument("--mnist-root", default="data/mnist_raw")
-    parser.add_argument("--imsize", default=128, type=int)
-    parser.add_argument("--max-digit-size", default=36, type=int)
-    parser.add_argument("--min-digit-size", default=22, type=int)
-    parser.add_argument("--num-train-images", default=60000, type=int)
-    parser.add_argument("--num-test-images", default=10000, type=int)
-    parser.add_argument("--max-digits-per-image", default=5, type=int)
-    parser.add_argument("--min-digits-per-image", default=3, type=int)
+    parser.add_argument("-bp", "--base-path", default="data/mnist_detection")
+    parser.add_argument("-mr", "--mnist-root", default="data/mnist_raw")
+    parser.add_argument("-im", "--imsize", default=128, type=int)
+    parser.add_argument("-mds", "--max-digit-size", default=36, type=int)
+    parser.add_argument("-mns", "--min-digit-size", default=22, type=int)
+    parser.add_argument("-nti", "--num-train-images", default=60000, type=int)
+    parser.add_argument("-sti", "--num-test-images", default=10000, type=int)
+    parser.add_argument("-mxdi", "--max-digits-per-image", default=5, type=int)
+    parser.add_argument("-mndi", "--min-digits-per-image", default=3, type=int)
 
     args = parser.parse_args()
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# shebang line for linux / mac
 
 from torchinfo import summary
 import torch.nn as nn

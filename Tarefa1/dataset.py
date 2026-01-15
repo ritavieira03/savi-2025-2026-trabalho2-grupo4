@@ -1,11 +1,9 @@
+#!/usr/bin/env python3
+# shebang line for linux / mac
+
 import glob
 import os
-import zipfile
-import numpy as np
-import requests
 import torch
-from colorama import init as colorama_init
-from colorama import Fore, Style
 from PIL import Image
 from torchvision import transforms
 

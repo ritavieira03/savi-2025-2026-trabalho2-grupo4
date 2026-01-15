@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# shebang line for linux / mac
+
 import os
 from matplotlib import pyplot as plt
 import numpy as np
