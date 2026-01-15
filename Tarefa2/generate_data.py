@@ -10,8 +10,8 @@ import tqdm
 from torchvision.datasets import MNIST
 
 def load_mnist_numpy(root: str, train: bool):
-    """Carrega o MNIST garantindo o mirror correto via torchvision."""
-    # Fix do URL para evitar erros de download dos servidores originais
+    ## Carregar o MNIST garantindo o mirror correto via torchvision.
+    ## URL corrigido para evitar erros de download dos servidores originais
     MNIST.mirrors = ["https://ossci-datasets.s3.amazonaws.com/mnist/"]
     
     ds = MNIST(root=root, train=train, download=True)
@@ -20,11 +20,11 @@ def load_mnist_numpy(root: str, train: bool):
     return X, Y
 
 def calculate_iou(prediction_box, gt_box):
-    """Calcula a Interseção sobre União (IoU)."""
+    ## Calcular a Interseção sobre União (IoU).
     x1_t, y1_t, x2_t, y2_t = gt_box
     x1_p, y1_p, x2_p, y2_p = prediction_box
 
-    # Sem sobreposição
+    ## Evitar a sobreposição
     if (x2_t <= x1_p) or (x2_p <= x1_t) or (y2_t <= y1_p) or (y2_p <= y1_t):
         return 0.0
 
@@ -39,24 +39,20 @@ def calculate_iou(prediction_box, gt_box):
     return float(intersection / union) if union > 0 else 0.0
 
 def compute_iou_all(bbox, all_bboxes):
-    """Calcula IoU contra todos os bboxes existentes."""
+    ## Calcular IoU contra todos os bboxes existentes
     if not all_bboxes:
         return [0.0]
     return [calculate_iou(bbox, b) for b in all_bboxes]
 
 def tight_bbox(digit, orig_bbox):
-    """
-    Ajusta a bbox para os limites reais dos píxeis não-vazios.
-    Usa NumPy para maior eficiência (evita loops for em Python).
-    """
+    ## Ajustar a bbox para os limites reais dos píxeis não-vazios
     xmin_old, ymin_old, xmax_old, ymax_old = orig_bbox
     
-    # Encontra coordenadas onde o dígito não é zero
+    # Encontrar as coordenadas onde o dígito não é zero
     coords = np.argwhere(digit > 0)
     if coords.size == 0:
         return [int(c) for c in orig_bbox]
 
-    # argwhere devolve [row, col] -> [y, x]
     y_min_rel, x_min_rel = coords.min(axis=0)
     y_max_rel, x_max_rel = coords.max(axis=0)
 
@@ -69,7 +65,7 @@ def tight_bbox(digit, orig_bbox):
 
 def check_dataset_health(dirpath: pathlib.Path, num_images: int):
     
-    ## Verifica se o dataset já existe, se sim, substitui-o
+    ## Verificar se o dataset já existe, se sim, substitui-o
     if dirpath.exists():
         shutil.rmtree(dirpath)
     
