@@ -9,6 +9,7 @@ import os, sys
 import warnings
 import re
 import cv2
+import random  # <- necessário para seleção aleatória
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -16,7 +17,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
-from Tarefa1.model import ModelBetterCNN ## importa o modelo treinado na Tarefa 1
+from Tarefa1.model import ModelBetterCNN  ## importa o modelo treinado na Tarefa 1
 
 ## Utilitários
 
@@ -90,7 +91,7 @@ def detect_objects(image, model, device, stride=2, batch_size=128, show_digits=F
     if image.max() > 1.0:
         image = image / 255.0
 
-    WINDOW_SIZES = [22, 26, 28, 32, 36] ## múltiplas escalas
+    WINDOW_SIZES = [22, 26, 28, 32, 36]  ## múltiplas escalas
     crops, meta = [], []
 
     ## Sliding Window
@@ -127,14 +128,14 @@ def detect_objects(image, model, device, stride=2, batch_size=128, show_digits=F
         with torch.no_grad():
             logits = model(batch)
             probs = torch.softmax(logits, dim=1)
-            scores, preds = probs.max(dim=1) ## score máximo e classe prevista
+            scores, preds = probs.max(dim=1)  ## score máximo e classe prevista
 
         ## Guardar resultados
         for j in range(len(batch)):
             x, y, size = meta[i + j]
             det = {"x": x, "y": y, "size": size, "score": scores[j].item()}
             if show_digits:
-                det["pred"] = int(preds[j].item()) ## só guarda dígito se show_digits=True
+                det["pred"] = int(preds[j].item())  ## só guarda dígito se show_digits=True
             detections.append(det)
 
     ## Supressão de detecções redundantes
@@ -143,7 +144,9 @@ def detect_objects(image, model, device, stride=2, batch_size=128, show_digits=F
     return detections
 
 def main():
-    parser = argparse.ArgumentParser(description="Tarefa 3 deteção de dígitos por Sliding Window com opção de avaliação de dígito")
+    parser = argparse.ArgumentParser(
+        description="Tarefa 3 deteção de dígitos por Sliding Window com opção de avaliação de dígito"
+    )
     parser.add_argument("--images_dir", type=str, default="../Tarefa2/data/versaoD/test/images")
     parser.add_argument("--checkpoint", type=str, default="../Tarefa1/experiments/best.pkl")
     parser.add_argument("--num_images", type=int, default=5)
@@ -159,9 +162,10 @@ def main():
 
     ## Listar imagens
     img_paths = list(pathlib.Path(args.images_dir).glob("*.png"))
-    img_paths.sort(key=lambda f: int(re.sub(r'\D', '', f.name) or 0))
+    if args.num_images < len(img_paths):
+        img_paths = random.sample(img_paths, args.num_images)  # selecionar aleatoriamente
 
-    for p in img_paths[:args.num_images]:
+    for p in img_paths:
         img = plt.imread(str(p))
         if img.ndim == 3:
             img = img.mean(axis=2)
@@ -174,11 +178,13 @@ def main():
         ax.imshow(img, cmap="gray")
 
         for det in detections:
-            rect = patches.Rectangle((det["x"], det["y"]), det["size"], det["size"], linewidth=2, edgecolor="lime", facecolor="none")
+            rect = patches.Rectangle(
+                (det["x"], det["y"]), det["size"], det["size"],
+                linewidth=2, edgecolor="lime", facecolor="none"
+            )
             ax.add_patch(rect)
 
             if args.show_digits and "pred" in det:
-                ## Mostrar dígito detetado apenas se show_digits=True
                 ax.text(det["x"], det["y"] - 1, str(det["pred"]), color="red", fontsize=14, fontweight="bold")
 
         ax.axis("off")
