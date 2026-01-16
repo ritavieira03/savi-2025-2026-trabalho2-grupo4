@@ -12,19 +12,17 @@ import cv2
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-# =========================================
-# Caminho do projeto
-# =========================================
+## Caminho do projeto
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
-from Tarefa1.model import ModelBetterCNN
+from Tarefa1.model import ModelBetterCNN ## importa o modelo treinado na Tarefa 1
 
-# =========================================
-# Utilitários
-# =========================================
+## Utilitários
 
 def get_iou(box1, box2):
+    ## Calcula a intersecção sobre a união entre duas caixas
+    ## Utilizado na supressão de não máximos
     x1, y1 = max(box1["x"], box2["x"]), max(box1["y"], box2["y"])
     x2 = min(box1["x"] + box1["size"], box2["x"] + box2["size"])
     y2 = min(box1["y"] + box1["size"], box2["y"] + box2["size"])
@@ -37,6 +35,8 @@ def get_iou(box1, box2):
     return inter / union if union > 0 else 0
 
 def non_max_suppression(detections, iou_thresh=0.3):
+    ## Supressão de detecções sobrepostas
+    ## Mantém apenas a caixa com maior score quando há sobreposição
     if not detections:
         return []
 
@@ -46,23 +46,15 @@ def non_max_suppression(detections, iou_thresh=0.3):
     while detections:
         best = detections.pop(0)
         keep.append(best)
-        detections = [
-            d for d in detections
-            if get_iou(best, d) < iou_thresh
-        ]
+        detections = [d for d in detections if get_iou(best, d) < iou_thresh]
     return keep
 
-# =========================================
-# Supressão de BBs maiores próximas de BBs menores
-# =========================================
 def suppress_nearby(detections, min_distance=22):
-    """
-    Remove deteções maiores se houver outra mais pequena próxima.
-    """
+    ## Remove detecções grandes muito próximas de detecções pequenas
+    ## Evita múltiplas caixas sobre o mesmo dígito
     if not detections:
         return []
 
-    # Ordenar por tamanho crescente (detecções pequenas primeiro)
     detections = sorted(detections, key=lambda d: d["size"])
     keep = []
 
@@ -84,53 +76,50 @@ def suppress_nearby(detections, min_distance=22):
 
     return keep
 
-# =========================================
-# Margem preta obrigatória
-# =========================================
 def has_black_margin(crop, margin):
+    ## Verifica se o recorte tem uma margem preta
+    ## Ajuda a rede a não classificar fundo como dígito
     top = crop[:margin, :]
     bottom = crop[-margin:, :]
     left = crop[:, :margin]
     right = crop[:, -margin:]
 
-    # Exige pixels completamente pretos
-    return (
-        np.all(top == 0) and
-        np.all(bottom == 0) and
-        np.all(left == 0) and
-        np.all(right == 0)
-    )
+    return np.all(top == 0) and np.all(bottom == 0) and np.all(left == 0) and np.all(right == 0)
 
-# =========================================
-# Sliding Window Multi-Escala com classificação
-# =========================================
 def detect_objects(image, model, device, stride=2, batch_size=128):
+    ## Função principal para deteção por Sliding Window
+    ## 1 Sliding Window multi escala
+    ## 2 Classificação com modelo da Tarefa 1
+    ## 3 Thresholding e filtragem de fundo
+    ## 4 Supressão de detecções redundantes
+
     h, w = image.shape
     model.eval()
 
-    # Normalizar se necessário
+    ## Normalizar imagem para 0 a 1
     if image.max() > 1.0:
         image = image / 255.0
 
-    WINDOW_SIZES = [22, 26, 28, 32, 36]
+    WINDOW_SIZES = [22, 26, 28, 32, 36] ## múltiplas escalas
     crops, meta = [], []
 
+    ## Etapa Sliding Window
     for win in WINDOW_SIZES:
-        margin = 1  # margem mínima de 1 pixel
+        margin = 1 ## margem mínima de 1 pixel
 
         for y in range(0, h - win + 1, stride):
             for x in range(0, w - win + 1, stride):
                 crop = image[y:y + win, x:x + win]
 
-                # descarta fundo óbvio
+                ## Thresholding 1 descartar fundo óbvio
                 if crop.mean() < 0.05 or crop.max() < 0.3:
                     continue
 
-                # margem preta obrigatória
+                ## Thresholding 2 exigir margem preta
                 if not has_black_margin(crop, margin):
                     continue
 
-                # redimensionar para a rede
+                ## Redimensionar para tamanho da rede 28x28
                 crop_resized = cv2.resize(crop, (28, 28), interpolation=cv2.INTER_AREA)
                 crops.append(crop_resized)
                 meta.append((x, y, win))
@@ -138,16 +127,19 @@ def detect_objects(image, model, device, stride=2, batch_size=128):
     if not crops:
         return []
 
+    ## Converter para tensor e enviar para dispositivo
     crops_t = torch.tensor(np.array(crops), dtype=torch.float32).unsqueeze(1).to(device)
     detections = []
 
+    ## Classificação dos recortes
     for i in range(0, len(crops_t), batch_size):
         batch = crops_t[i:i + batch_size]
         with torch.no_grad():
-            logits = model(batch)
+            logits = model(batch) ## usar modelo da Tarefa 1
             probs = torch.softmax(logits, dim=1)
-            scores, preds = probs.max(dim=1)  # score máximo e classe prevista
+            scores, preds = probs.max(dim=1) ## score máximo e classe prevista
 
+        ## Guardar resultados com score e posição
         for j in range(len(batch)):
             x, y, size = meta[i + j]
             detections.append({
@@ -158,18 +150,13 @@ def detect_objects(image, model, device, stride=2, batch_size=128):
                 "pred": int(preds[j].item())
             })
 
-    # Aplicar supressões
-    detections = non_max_suppression(detections)
-    detections = suppress_nearby(detections, min_distance=22)
+    ## Supressão de detecções redundantes
+    detections = non_max_suppression(detections) ## NMS
+    detections = suppress_nearby(detections, min_distance=22) ## remover BBs próximos
     return detections
 
-# =========================================
-# Execução
-# =========================================
 def main():
-    parser = argparse.ArgumentParser(
-        description="Tarefa 3 — Deteção e identificação de dígitos por Sliding Window"
-    )
+    parser = argparse.ArgumentParser(description="Tarefa 3 deteção e identificação de dígitos por Sliding Window")
     parser.add_argument("--images_dir", type=str, default="../Tarefa2/data/versaoD/test/images")
     parser.add_argument("--checkpoint", type=str, default="../Tarefa1/experiments/best.pkl")
     parser.add_argument("--num_images", type=int, default=5)
@@ -178,38 +165,33 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ModelBetterCNN().to(device)
 
-    # Carregar checkpoint
+    ## Carregar modelo da Tarefa 1
     checkpoint = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
 
-    # Listar imagens
+    ## Listar imagens
     img_paths = list(pathlib.Path(args.images_dir).glob("*.png"))
     img_paths.sort(key=lambda f: int(re.sub(r'\D', '', f.name) or 0))
 
     for p in img_paths[:args.num_images]:
         img = plt.imread(str(p))
         if img.ndim == 3:
-            img = img.mean(axis=2)  # converter para grayscale
+            img = img.mean(axis=2) ## converter para grayscale
 
+        ## Detetar dígitos
         detections = detect_objects(img, model, device)
 
+        ## Visualização
         fig, ax = plt.subplots(figsize=(6, 6))
         ax.imshow(img, cmap="gray")
 
         for det in detections:
-            rect = patches.Rectangle(
-                (det["x"], det["y"]),
-                det["size"],
-                det["size"],
-                linewidth=2,
-                edgecolor="lime",
-                facecolor="none"
-            )
+            ## Desenhar bounding box
+            rect = patches.Rectangle((det["x"], det["y"]), det["size"], det["size"], linewidth=2, edgecolor="lime", facecolor="none")
             ax.add_patch(rect)
 
-            # mostrar o número detetado
-            ax.text(det["x"], det["y"] - 1, str(det["pred"]),
-                    color="red", fontsize=14, fontweight="bold")
+            ## Mostrar número detetado
+            ax.text(det["x"], det["y"] - 1, str(det["pred"]), color="red", fontsize=14, fontweight="bold")
 
         ax.axis("off")
         plt.title(f"Imagem: {p.name}")
