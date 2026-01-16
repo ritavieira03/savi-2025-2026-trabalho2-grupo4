@@ -53,6 +53,38 @@ def non_max_suppression(detections, iou_thresh=0.3):
     return keep
 
 # =========================================
+# Supressão de BBs maiores próximas de BBs menores
+# =========================================
+def suppress_nearby(detections, min_distance=22):
+    """
+    Remove deteções maiores se houver outra mais pequena próxima.
+    """
+    if not detections:
+        return []
+
+    # Ordenar por tamanho crescente (detecções pequenas primeiro)
+    detections = sorted(detections, key=lambda d: d["size"])
+    keep = []
+
+    for det in detections:
+        x_c = det["x"] + det["size"] / 2
+        y_c = det["y"] + det["size"] / 2
+        too_close = False
+
+        for k in keep:
+            k_xc = k["x"] + k["size"] / 2
+            k_yc = k["y"] + k["size"] / 2
+            dist = ((x_c - k_xc) ** 2 + (y_c - k_yc) ** 2) ** 0.5
+            if dist < min_distance:
+                too_close = True
+                break
+
+        if not too_close:
+            keep.append(det)
+
+    return keep
+
+# =========================================
 # Margem preta obrigatória
 # =========================================
 def has_black_margin(crop, margin):
@@ -126,7 +158,10 @@ def detect_objects(image, model, device, stride=2, batch_size=128):
                 "pred": int(preds[j].item())
             })
 
-    return non_max_suppression(detections)
+    # Aplicar supressões
+    detections = non_max_suppression(detections)
+    detections = suppress_nearby(detections, min_distance=22)
+    return detections
 
 # =========================================
 # Execução
@@ -173,8 +208,8 @@ def main():
             ax.add_patch(rect)
 
             # mostrar o número detetado
-            ax.text(det["x"], det["y"] - 2, str(det["pred"]),
-                    color="red", fontsize=12, fontweight="bold")
+            ax.text(det["x"], det["y"] - 1, str(det["pred"]),
+                    color="red", fontsize=14, fontweight="bold")
 
         ax.axis("off")
         plt.title(f"Imagem: {p.name}")
