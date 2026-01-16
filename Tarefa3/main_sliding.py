@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import os, sys
 import warnings
+import re
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -118,6 +119,7 @@ def main():
     model.load_state_dict(checkpoint["model_state_dict"])
     
     img_paths = list(pathlib.Path(args.images_dir).glob("*.png"))
+    img_paths.sort(key=lambda f: int(re.sub(r'\D', '', f.name) or 0))
 
     for p in img_paths[:10]:
         img = plt.imread(str(p))
@@ -131,11 +133,11 @@ def main():
         for det in detections:
             rect = patches.Rectangle((det["x"], det["y"]), 28, 28, linewidth=2, edgecolor='#00FF00', facecolor='none')
             ax.add_patch(rect)
-            ax.text(det["x"], det["y"]-5, f"D{det['cls']}: {det['conf']:.2f}",
+            ax.text(det["x"], det["y"]-5, f"{det['cls']} ({det['conf']:.2f})",
                     color='white', fontsize=9, fontweight='bold', 
                     bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
         ax.axis('off')
-        plt.title(f"Resultado: {p.name}")
+        plt.title(f"Imagem: {p.name}")
         plt.show()
 
 if __name__ == "__main__":
