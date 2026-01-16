@@ -22,7 +22,6 @@ from Tarefa1.model import ModelBetterCNN ## importa o modelo treinado na Tarefa 
 
 def get_iou(box1, box2):
     ## Calcula a intersecção sobre a união entre duas caixas
-    ## Utilizado na supressão de não máximos
     x1, y1 = max(box1["x"], box2["x"]), max(box1["y"], box2["y"])
     x2 = min(box1["x"] + box1["size"], box2["x"] + box2["size"])
     y2 = min(box1["y"] + box1["size"], box2["y"] + box2["size"])
@@ -36,7 +35,6 @@ def get_iou(box1, box2):
 
 def non_max_suppression(detections, iou_thresh=0.3):
     ## Supressão de detecções sobrepostas
-    ## Mantém apenas a caixa com maior score quando há sobreposição
     if not detections:
         return []
 
@@ -50,8 +48,7 @@ def non_max_suppression(detections, iou_thresh=0.3):
     return keep
 
 def suppress_nearby(detections, min_distance=22):
-    ## Remove detecções grandes muito próximas de detecções pequenas
-    ## Evita múltiplas caixas sobre o mesmo dígito
+    ## Remove detecções grandes próximas de detecções pequenas
     if not detections:
         return []
 
@@ -78,48 +75,41 @@ def suppress_nearby(detections, min_distance=22):
 
 def has_black_margin(crop, margin):
     ## Verifica se o recorte tem uma margem preta
-    ## Ajuda a rede a não classificar fundo como dígito
     top = crop[:margin, :]
     bottom = crop[-margin:, :]
     left = crop[:, :margin]
     right = crop[:, -margin:]
-
     return np.all(top == 0) and np.all(bottom == 0) and np.all(left == 0) and np.all(right == 0)
 
-def detect_objects(image, model, device, stride=2, batch_size=128):
-    ## Função principal para deteção por Sliding Window
-    ## 1 Sliding Window multi escala
-    ## 2 Classificação com modelo da Tarefa 1
-    ## 3 Thresholding e filtragem de fundo
-    ## 4 Supressão de detecções redundantes
-
+def detect_objects(image, model, device, stride=2, batch_size=128, show_digits=False):
+    ## Função para deteção por Sliding Window
     h, w = image.shape
     model.eval()
 
-    ## Normalizar imagem para 0 a 1
+    ## Normalizar imagem
     if image.max() > 1.0:
         image = image / 255.0
 
     WINDOW_SIZES = [22, 26, 28, 32, 36] ## múltiplas escalas
     crops, meta = [], []
 
-    ## Etapa Sliding Window
+    ## Sliding Window
     for win in WINDOW_SIZES:
-        margin = 1 ## margem mínima de 1 pixel
+        margin = 1
 
         for y in range(0, h - win + 1, stride):
             for x in range(0, w - win + 1, stride):
                 crop = image[y:y + win, x:x + win]
 
-                ## Thresholding 1 descartar fundo óbvio
+                ## Thresholding fundo
                 if crop.mean() < 0.05 or crop.max() < 0.3:
                     continue
 
-                ## Thresholding 2 exigir margem preta
+                ## Exigir margem preta
                 if not has_black_margin(crop, margin):
                     continue
 
-                ## Redimensionar para tamanho da rede 28x28
+                ## Redimensionar para rede 28x28
                 crop_resized = cv2.resize(crop, (28, 28), interpolation=cv2.INTER_AREA)
                 crops.append(crop_resized)
                 meta.append((x, y, win))
@@ -127,7 +117,7 @@ def detect_objects(image, model, device, stride=2, batch_size=128):
     if not crops:
         return []
 
-    ## Converter para tensor e enviar para dispositivo
+    ## Converter para tensor
     crops_t = torch.tensor(np.array(crops), dtype=torch.float32).unsqueeze(1).to(device)
     detections = []
 
@@ -135,37 +125,35 @@ def detect_objects(image, model, device, stride=2, batch_size=128):
     for i in range(0, len(crops_t), batch_size):
         batch = crops_t[i:i + batch_size]
         with torch.no_grad():
-            logits = model(batch) ## usar modelo da Tarefa 1
+            logits = model(batch)
             probs = torch.softmax(logits, dim=1)
             scores, preds = probs.max(dim=1) ## score máximo e classe prevista
 
-        ## Guardar resultados com score e posição
+        ## Guardar resultados
         for j in range(len(batch)):
             x, y, size = meta[i + j]
-            detections.append({
-                "x": x,
-                "y": y,
-                "size": size,
-                "score": scores[j].item(),
-                "pred": int(preds[j].item())
-            })
+            det = {"x": x, "y": y, "size": size, "score": scores[j].item()}
+            if show_digits:
+                det["pred"] = int(preds[j].item()) ## só guarda dígito se show_digits=True
+            detections.append(det)
 
     ## Supressão de detecções redundantes
-    detections = non_max_suppression(detections) ## NMS
-    detections = suppress_nearby(detections, min_distance=22) ## remover BBs próximos
+    detections = non_max_suppression(detections)
+    detections = suppress_nearby(detections, min_distance=22)
     return detections
 
 def main():
-    parser = argparse.ArgumentParser(description="Tarefa 3 deteção e identificação de dígitos por Sliding Window")
+    parser = argparse.ArgumentParser(description="Tarefa 3 deteção de dígitos por Sliding Window com opção de avaliação de dígito")
     parser.add_argument("--images_dir", type=str, default="../Tarefa2/data/versaoD/test/images")
     parser.add_argument("--checkpoint", type=str, default="../Tarefa1/experiments/best.pkl")
     parser.add_argument("--num_images", type=int, default=5)
+    parser.add_argument("--show_digits", action="store_true", help="Mostrar qual é o dígito detetado")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ModelBetterCNN().to(device)
 
-    ## Carregar modelo da Tarefa 1
+    ## Carregar modelo
     checkpoint = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
 
@@ -176,22 +164,22 @@ def main():
     for p in img_paths[:args.num_images]:
         img = plt.imread(str(p))
         if img.ndim == 3:
-            img = img.mean(axis=2) ## converter para grayscale
+            img = img.mean(axis=2)
 
-        ## Detetar dígitos
-        detections = detect_objects(img, model, device)
+        ## Detetar regiões
+        detections = detect_objects(img, model, device, show_digits=args.show_digits)
 
         ## Visualização
         fig, ax = plt.subplots(figsize=(6, 6))
         ax.imshow(img, cmap="gray")
 
         for det in detections:
-            ## Desenhar bounding box
             rect = patches.Rectangle((det["x"], det["y"]), det["size"], det["size"], linewidth=2, edgecolor="lime", facecolor="none")
             ax.add_patch(rect)
 
-            ## Mostrar número detetado
-            ax.text(det["x"], det["y"] - 1, str(det["pred"]), color="red", fontsize=14, fontweight="bold")
+            if args.show_digits and "pred" in det:
+                ## Mostrar dígito detetado apenas se show_digits=True
+                ax.text(det["x"], det["y"] - 1, str(det["pred"]), color="red", fontsize=14, fontweight="bold")
 
         ax.axis("off")
         plt.title(f"Imagem: {p.name}")
