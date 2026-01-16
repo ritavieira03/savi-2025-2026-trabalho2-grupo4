@@ -92,9 +92,9 @@ Outputs típicos:
   - `results_table.png`
 
 ---
-![Training curve](./arefa1/experiments/training.png)  
-![Confusion matrix](./arefa1/experiments/confusion_matrix.png)  
-![Results table](./arefa1/experiments/results_table.png)
+![Training curve](./Tarefa1/experiments/training.png)  
+![Confusion matrix](./Tarefa1/experiments/confusion_matrix.png)  
+![Results table](./Tarefa1/experiments/results_table.png)
 
 ---
 
@@ -134,8 +134,8 @@ Além disso, guarda um `estatisticas.json`.
 - `mean_bbox_area_per_class.png` — área média por classe
 - `estatisticas.png` — colagem com as figuras anteriores
 
-![BBoxes mosaic](./arefa2/out_treino/bboxes.png)  
-![Stats summary](./arefa2/out_treino/estatisticas.png)
+![BBoxes mosaic](./Tarefa2/out_treino/bboxes.png)  
+![Stats summary](./Tarefa2/out_treino/estatisticas.png)
 
 ---
 
@@ -164,8 +164,8 @@ Para cada imagem:
 ## 6.3. Outputs (visualização)
 O script mostra as deteções com `matplotlib` (por defeito com `plt.show()`).
 
-![Sliding Window detections - exemplo 1](./arefa3/detections/amostra1.png)  
-![Sliding Window detections - exemplo 2](./arefa3/detections/sw_exemplo2.png)
+![Sliding Window detections - exemplo 1](./Tarefa3/detections/amostra1.png)  
+![Sliding Window detections - exemplo 2](./Tarefa3/analise_resultados.png)
 
 ## 6.4. Avaliação qualitativa
 
