@@ -101,7 +101,7 @@ def generate_dataset(
     image_dir.mkdir(exist_ok=True, parents=True)
     label_dir.mkdir(exist_ok=True, parents=True)
 
-    for image_id in tqdm.trange(num_images, desc=f"Gerando {dirpath.name}"):
+    for image_id in tqdm.trange(num_images, desc=f"A gerar {dirpath.name}"):
         # Canvas em float32 para cálculos, depois convertido
         im = np.zeros((imsize, imsize), dtype=np.float32)
         labels = []
