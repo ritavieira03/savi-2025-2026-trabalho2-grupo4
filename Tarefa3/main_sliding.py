@@ -117,9 +117,9 @@ def main():
     checkpoint = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
     
-    img_paths = sorted(pathlib.Path(args.images_dir).glob("*.png"))
+    img_paths = list(pathlib.Path(args.images_dir).glob("*.png"))
 
-    for p in img_paths[:5]:
+    for p in img_paths[:10]:
         img = plt.imread(str(p))
         if img.ndim == 3: img = img.mean(axis=2)
 
