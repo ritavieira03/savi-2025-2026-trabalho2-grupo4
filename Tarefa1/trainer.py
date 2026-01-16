@@ -341,13 +341,14 @@ class Trainer():
 
     ## Função para desenhar a matriz de confusão
     def plot_confusion_matrix(self, cm):
-        
         plt.figure(2)
-        for i in range(10):
-            class_names = [str(i)]
+
+        # Lista de classes de 0 a 9
+        class_names = [str(i) for i in range(10)]
         
         title = 'Confusion Matrix'
-        seaborn.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=True, xticklabels=class_names, yticklabels=class_names)
+        seaborn.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=True, 
+                        xticklabels=class_names, yticklabels=class_names)
 
         plt.title(title, fontsize=16)
         plt.xlabel('Predicted classes', fontsize=14)
