@@ -217,7 +217,7 @@ class ModelBetterCNN(nn.Module):
             ## saída 10
         )
 
-        print('Arquitetura do modelo inicializada com ' + str(self.getNumberOfParameters()) + ' parâmetros.')
+        print('\nArquitetura do modelo inicializada com ' + str(self.getNumberOfParameters()) + ' parâmetros.')
         # summary(self, input_size=(1, 1, 28, 28))
 
     def forward(self, x):

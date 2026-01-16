@@ -1,0 +1,2 @@
+label, xmin, ymin, xmax, ymax
+1, 11, 29, 24, 49

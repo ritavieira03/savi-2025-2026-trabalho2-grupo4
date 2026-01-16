@@ -38,37 +38,35 @@ class Dataset(torch.utils.data.Dataset):
                 self.labels.append(label)
 
 
-        ## selecionar a percentagem de exemplos a utilizar
+        ## Selecionar a percentagem de exemplos a utilizar
         num_examples = round(len(self.image_filenames) * 0.1)
+        print(f"A usar {num_examples} exemplos para {'treino' if is_train else 'teste'}.")
 
-        ## reduz o tamanho das image_fileanames e das labels
+        ## Reduz o tamanho das image_fileanames e das labels
         self.image_filenames = self.image_filenames[0:num_examples]
         self.labels = self.labels[0:num_examples]
 
 
         ## Converter de uma lista para um tensor
         self.to_tensor = transforms.ToTensor()
-
+    
+    ## Esta função retorna o número de exemplos no dataset    
     def __len__(self):
-        ## Esta função retorna o número de exemplos no dataset
         return len(self.image_filenames)
 
+    ## Esta função recebe como input o idx de um exemplo e deve devolver o input e o output correspondente a esse exemplo
     def __getitem__(self, idx):
-        ## Esta função recebe como input o idx de um exemplo e deve devolver o input e o output correspondente a esse exemplo.
-        ## retorna (image_tensor, label_tensor)
-
-
         ## Obter a label como um tensor
         label_index = int(self.labels[idx])
-        label = [0]*10  # create a list of ten zeros
-        label[label_index] = 1  # set the position of the label to 1
+        label = [0]*10
+        label[label_index] = 1
 
         label_tensor = torch.tensor(label, dtype=torch.float)
 
         ## Obter a imagem como um tensor
         image_filename = self.image_filenames[idx]
 
-        image = Image.open(image_filename).convert('L')  # grayscale
+        image = Image.open(image_filename).convert('L')
         image_tensor = self.to_tensor(image)
 
         return image_tensor, label_tensor
