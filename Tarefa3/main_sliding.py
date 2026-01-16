@@ -88,7 +88,7 @@ def detect_digits(image, model, device, stride=2, batch_size=128):
             idx = i + j
             # --- MELHORIA 2: Thresholds Rigorosos ---
             # Exigimos confiança muito alta E uma margem clara sobre a segunda opção
-            if confs[j] > 0.999 and entropy[j] < 0.4 and margin[j] > 0.8:
+            if confs[j] > 0.999 and entropy[j] < 1 and margin[j] > 0.8:
                 detections.append({
                     "x": coords[idx][0],
                     "y": coords[idx][1],
@@ -104,7 +104,7 @@ def detect_digits(image, model, device, stride=2, batch_size=128):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--images_dir", type=str, default="../Tarefa2/data/mnist_detection/test/images")
+    parser.add_argument("--images_dir", type=str, default="../Tarefa2/data/versaoD/test/images")
     parser.add_argument("--checkpoint", type=str, default="../Tarefa1/experiments/best.pkl")
     args = parser.parse_args()
 
