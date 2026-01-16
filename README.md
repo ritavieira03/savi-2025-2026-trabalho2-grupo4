@@ -165,7 +165,6 @@ Para cada imagem:
 O script mostra as deteções com `matplotlib` (por defeito com `plt.show()`).
 
 ![Sliding Window detections - exemplo 1](./Tarefa3/detections/amostra1.png)  
-![Sliding Window detections - exemplo 2](./Tarefa3/analise_resultados.png)
 
 ## 6.4. Avaliação qualitativa
 
@@ -179,23 +178,16 @@ A abordagem de *sliding window* é simples e funciona sem treinar um detetor ded
   sendo $H$ a altura da imagem (em píxeis), $W$ a largura da imagem (em píxeis), $l$ o tamanho da janela (assumida quadrada, $w \times w$) e $s$ o *stride* (passo) da janela.
 
 - Exemplo típico (imagens **128×128**, `stride=2`, `WINDOW_SIZES=[22,26,28,32,36]`):
-  - nº de janelas ≈ **12 831 por imagem** (antes de qualquer filtragem).
+  - nº de janelas ≈ **12 831 por imagem** (antes de qualquer filtro).
 - O custo real depende muito de:
   - `stride` (menor = muito mais lento),
   - nº de tamanhos de janelas testadas (`WINDOW_SIZES`),
-  - execução em CPU vs GPU,
   - quanto é filtrado antes da rede (heurísticas de fundo/margem).
 
-**Bottlenecks práticos**
-- Loops em Python + *crop* + *resize* (28×28) repetidos milhares de vezes.
-- *Forward pass* do modelo (mesmo em batch, continua a ser o maior custo quando muitas janelas passam os filtros).
-
-**Como melhorar (trade-off tempo vs qualidade)**
+**Análise - Tempo vs Qualidade
 - Aumentar `stride` (ex.: 4) → muito mais rápido, mas pior localização.
-- Reduzir escalas (ex.: só 22 e 36) → menos janelas.
+- Reduzir escalas (ex.: só 22 e 36) → menos janelas → mais rápido, mas com mais erros de deteção.
 - Subir o limiar de confiança → menos *candidates* para NMS.
-- Vetorizar a extração de janelas (ex.: `torch.nn.Unfold`) e correr tudo em GPU.
-- (Melhor solução) Treinar um detetor (mesmo simples) em vez de usar sliding window.
 
 ---
 
@@ -231,6 +223,11 @@ Como várias janelas diferentes conseguem “ver” o mesmo dígito:
 
 ---
 
+### Resultados
+![Sliding Window detections - exemplo 2](./Tarefa3/analise_resultados.png)
+
+---
+
 ### Conclusão
 O *sliding window* é uma boa prova de conceito (usa diretamente o classificador da T1), mas:
 - **não é eficiente** para muitas imagens (custo cresce muito com stride pequeno e várias escalas),
@@ -238,5 +235,6 @@ O *sliding window* é uma boa prova de conceito (usa diretamente o classificador
 - e a **localização não é tight** por depender de janelas quadradas e de uma grelha discreta.
 
 Para resultados robustos e rápidos, o ideal é evoluir para um modelo de deteção treinado (mesmo simples) ou incorporar uma etapa explícita de “background rejection” aprendida (ex.: classe extra, ou um *proposal stage*).
+
 
 
