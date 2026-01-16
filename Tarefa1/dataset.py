@@ -39,7 +39,7 @@ class Dataset(torch.utils.data.Dataset):
 
 
         ## Selecionar a percentagem de exemplos a utilizar
-        num_examples = round(len(self.image_filenames) * 0.1)
+        num_examples = round(len(self.image_filenames) * 1)
         print(f"A usar {num_examples} exemplos para {'treino' if is_train else 'teste'}.")
 
         ## Reduz o tamanho das image_fileanames e das labels
