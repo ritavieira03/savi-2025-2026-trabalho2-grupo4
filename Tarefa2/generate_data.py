@@ -49,7 +49,7 @@ def tight_bbox(digit, orig_bbox):
     ## Ajustar a bbox para os limites reais dos píxeis não-vazios
     xmin_old, ymin_old, xmax_old, ymax_old = orig_bbox
     
-    # Encontrar as coordenadas onde o dígito não é zero
+    ## Encontrar as coordenadas onde o dígito não é zero
     coords = np.argwhere(digit > 0)
     if coords.size == 0:
         return [int(c) for c in orig_bbox]
@@ -146,7 +146,7 @@ def generate_dataset(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gerador de Dataset MNIST Detection")
-    parser.add_argument("-bp", "--base-path", default="data/mnist_detection")
+    parser.add_argument("-bp", "--base-path", default="data/versaoD")
     parser.add_argument("-mr", "--mnist-root", default="data/mnist_raw")
     parser.add_argument("-im", "--imsize", default=128, type=int)
     parser.add_argument("-mds", "--max-digit-size", default=36, type=int)

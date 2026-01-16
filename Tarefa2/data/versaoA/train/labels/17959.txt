@@ -1,0 +1,2 @@
+label, xmin, ymin, xmax, ymax
+6, 96, 91, 107, 108

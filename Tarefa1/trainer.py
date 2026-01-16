@@ -116,14 +116,14 @@ class Trainer():
     def loadTrain(self):
         print('\nRetomar o último treino disponível.')
 
-        # Encontar o ficheiro checkpoint
+        ## Encontar o ficheiro checkpoint
         checkpoint_file = os.path.join(self.args['experiment_full_name'], 'checkpoint.pkl')
 
-        # Verificar se o ficheiro existe. Se não existir abortar, não é possível retomar sem o checkpoint.pkl
+        ## Verificar se o ficheiro existe. Se não existir abortar, não é possível retomar sem o checkpoint.pkl
         if not os.path.exists(checkpoint_file):
             raise ValueError('Ficheiro Checkpoint.pkl não encontrado: ' + checkpoint_file)
 
-        # Carregar o checkpoint
+        ## Carregar o checkpoint
         checkpoint = torch.load(checkpoint_file, weights_only=False)
         print(checkpoint.keys())
 
