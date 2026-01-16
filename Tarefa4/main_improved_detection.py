@@ -1,33 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-main_improved_detection.py
-
-Tarefa 4 — Nova abordagem (superar janela deslizante):
-  1) Re-treino com dados da Tarefa 2 (generate_data.py): crops 28x28 de dígitos + crops de fundo (classe 10 = "bg")
-  2) Conversão do classificador para FCN (Fully Convolutional Network):
-       - Linear(64*7*7 -> 256)  => Conv2d(64 -> 256, k=7)
-       - Linear(256 -> 11)      => Conv2d(256 -> 11,  k=1)
-     Permite passar imagem inteira e obter mapa de probabilidades por localização.
-  3) Deteção multi-escala (piramide de imagem) + NMS
-  4) Resultados: métricas (11 classes), matriz confusão, curvas treino, qualitativo (GT vs Pred), resumo deteção.
-
-Sem alterar nenhum outro ficheiro do projeto.
-
-Exemplos:
-  ./main_improved_detection.py --data_base ../data/versaoD --model_py ../Tarefa1/model.py --epochs 3 --use_multiscale
-  ./main_improved_detection.py --data_base data/versaoD --epochs 2 --max_train_imgs 2000 --max_test_imgs 400
-
-Estrutura esperada (mas o script tenta variações):
-  <data_base>/
-    train/ (ou training/)
-      images/
-      labels/
-    test/  (ou testing/)
-      images/
-      labels/
-"""
 
 import os
 import sys
@@ -47,6 +18,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 
 # -----------------------------------------------------------------------------
@@ -73,14 +45,9 @@ _ensure_torchinfo()
 # Import do ModelBetterCNN por caminho (sem depender de packages)
 # -----------------------------------------------------------------------------
 def import_modelbettercnn(model_py: str = ""):
-    """
-    Carrega ModelBetterCNN a partir de um ficheiro model.py, sem exigir packages.
-    Tenta automaticamente locais comuns se --model_py não for fornecido.
-    """
     here = pathlib.Path(__file__).resolve()
 
     candidates: List[pathlib.Path] = []
-
     if model_py:
         candidates.append(pathlib.Path(model_py).expanduser().resolve())
 
@@ -121,9 +88,65 @@ def import_modelbettercnn(model_py: str = ""):
 
 
 # -----------------------------------------------------------------------------
-# Leitura labels do generate_data.py
-# Formato:
-#   label, xmin, ymin, xmax, ymax
+# Utils dataset
+# -----------------------------------------------------------------------------
+def resolve_split_dirs(base_path: str, split: str):
+    """
+    Resolve diretórios do split, tolerando variações:
+      train/training/Train...
+      test/testing/Test...
+      images/imgs/img...
+      labels/annotations/ann...
+    """
+    base_root = pathlib.Path(base_path).expanduser().resolve()
+
+    split_candidates = [split]
+    if split == "train":
+        split_candidates += ["training", "Train", "TRAIN"]
+    if split == "test":
+        split_candidates += ["testing", "Test", "TEST"]
+
+    chosen_split = None
+    for s in split_candidates:
+        if (base_root / s).is_dir():
+            chosen_split = s
+            break
+    if chosen_split is None:
+        chosen_split = split
+
+    base = base_root / chosen_split
+
+    images_candidates = ["images", "Images", "imgs", "img"]
+    labels_candidates = ["labels", "Labels", "label", "annotations", "ann", "annotation"]
+
+    images_dir = None
+    for d in images_candidates:
+        p = base / d
+        if p.is_dir():
+            images_dir = p
+            break
+
+    labels_dir = None
+    for d in labels_candidates:
+        p = base / d
+        if p.is_dir():
+            labels_dir = p
+            break
+
+    return base, images_dir, labels_dir
+
+
+def list_images(images_dir: pathlib.Path) -> List[pathlib.Path]:
+    exts = ["*.png", "*.PNG", "*.jpg", "*.JPG", "*.jpeg", "*.JPEG"]
+    paths: List[pathlib.Path] = []
+    for e in exts:
+        paths += list(images_dir.glob(e))
+    paths = sorted(paths, key=lambda p: int(p.stem) if p.stem.isdigit() else p.stem)
+    return paths
+
+
+# -----------------------------------------------------------------------------
+# Leitura labels do generate_data.py:  label, xmin, ymin, xmax, ymax
 # -----------------------------------------------------------------------------
 def read_labels_txt(label_path: pathlib.Path) -> Tuple[np.ndarray, np.ndarray]:
     labels: List[int] = []
@@ -160,14 +183,13 @@ def iou_xyxy(a: List[float], b: List[float]) -> float:
 
 # -----------------------------------------------------------------------------
 # Dataset: crops 28x28 (dígitos) + crops de fundo (bg)
-#   - robusto a variações: train/training, images/imgs, labels/annotations, PNG/JPG, labels 00012.png -> 12.txt
+#   - suporta subset explícito de imagens via img_paths_list
 # -----------------------------------------------------------------------------
 class SceneCropsDataset(Dataset):
     """
     Produz amostras 28x28 para treino de classificador:
       - classes 0..9 : dígitos
       - classe 10    : fundo (background)
-    A partir das imagens do generate_data.py e bboxes GT.
     """
 
     def __init__(
@@ -181,43 +203,8 @@ class SceneCropsDataset(Dataset):
         bg_minmax: Tuple[int, int] = (22, 36),
         pad: int = 2,
         seed: int = 0,
-        max_imgs: Optional[int] = None,
+        img_paths_list: Optional[List[pathlib.Path]] = None,
     ):
-        base_root = pathlib.Path(base_path).expanduser().resolve()
-
-        split_candidates = [split]
-        if split == "train":
-            split_candidates += ["training", "Train", "TRAIN"]
-        if split == "test":
-            split_candidates += ["testing", "Test", "TEST"]
-
-        chosen_split = None
-        for s in split_candidates:
-            if (base_root / s).is_dir():
-                chosen_split = s
-                break
-        if chosen_split is None:
-            chosen_split = split
-
-        self.base = base_root / chosen_split
-
-        images_candidates = ["images", "Images", "imgs", "img"]
-        labels_candidates = ["labels", "Labels", "label", "annotations", "ann", "annotation"]
-
-        self.images_dir = None
-        for d in images_candidates:
-            p = self.base / d
-            if p.is_dir():
-                self.images_dir = p
-                break
-
-        self.labels_dir = None
-        for d in labels_candidates:
-            p = self.base / d
-            if p.is_dir():
-                self.labels_dir = p
-                break
-
         self.imsize = imsize
         self.out_size = out_size
         self.bg_class = bg_class
@@ -226,23 +213,18 @@ class SceneCropsDataset(Dataset):
         self.pad = pad
         self.rng = random.Random(seed)
 
+        self.base, self.images_dir, self.labels_dir = resolve_split_dirs(base_path, split)
+
         self.img_paths: List[str] = []
         self.samples: List[Tuple[int, Tuple[int, int, int, int], int]] = []
 
-        # Se não encontrou dirs, fica vazio (o main dá diagnóstico)
         if self.images_dir is None or self.labels_dir is None:
             return
 
-        # aceita várias extensões e caixa
-        exts = ["*.png", "*.PNG", "*.jpg", "*.JPG", "*.jpeg", "*.JPEG"]
-        img_paths: List[pathlib.Path] = []
-        for e in exts:
-            img_paths += list(self.images_dir.glob(e))
-
-        img_paths = sorted(img_paths, key=lambda p: int(p.stem) if p.stem.isdigit() else p.stem)
-
-        if max_imgs is not None:
-            img_paths = img_paths[:max_imgs]
+        if img_paths_list is None:
+            img_paths = list_images(self.images_dir)
+        else:
+            img_paths = img_paths_list
 
         self.img_paths = [str(p) for p in img_paths]
 
@@ -251,7 +233,6 @@ class SceneCropsDataset(Dataset):
 
             # label com o mesmo stem
             lp = self.labels_dir / f"{ip.stem}.txt"
-
             # fallback: 00012.png -> 12.txt
             if not lp.is_file() and ip.stem.isdigit():
                 lp2 = self.labels_dir / f"{int(ip.stem)}.txt"
@@ -341,49 +322,6 @@ def patch_model_to_n_classes(model: nn.Module, n_classes: int) -> nn.Module:
     return model
 
 
-def init_from_10class_checkpoint(model_n: nn.Module, ckpt_path: str, device: torch.device, n_classes: int) -> nn.Module:
-    ckpt = torch.load(ckpt_path, map_location=device)
-    sd = ckpt["model_state_dict"] if isinstance(ckpt, dict) and "model_state_dict" in ckpt else ckpt
-
-    model_n.load_state_dict(sd, strict=False)
-
-    clf: nn.Sequential = getattr(model_n, "classifier")
-    last_lin: Optional[nn.Linear] = None
-    for m in reversed(clf):
-        if isinstance(m, nn.Linear):
-            last_lin = m
-            break
-    if last_lin is None:
-        return model_n
-
-    cand_w = None
-    cand_b = None
-    for k, v in sd.items():
-        if (
-            k.endswith("weight")
-            and isinstance(v, torch.Tensor)
-            and v.ndim == 2
-            and v.shape[0] == 10
-            and v.shape[1] == last_lin.in_features
-        ):
-            cand_w = v
-            kb = k.replace("weight", "bias")
-            if kb in sd and isinstance(sd[kb], torch.Tensor) and sd[kb].shape[0] == 10:
-                cand_b = sd[kb]
-            break
-
-    if cand_w is not None:
-        with torch.no_grad():
-            last_lin.weight[:10].copy_(cand_w)
-            if cand_b is not None:
-                last_lin.bias[:10].copy_(cand_b)
-            for c in range(10, n_classes):
-                last_lin.weight[c].zero_()
-                last_lin.bias[c].zero_()
-
-    return model_n
-
-
 # -----------------------------------------------------------------------------
 # FCN: conversão robusta do classificador para convolucional
 # -----------------------------------------------------------------------------
@@ -409,11 +347,6 @@ def _find_last_linear(clf: nn.Sequential, in_f: int, out_f: int) -> nn.Linear:
 
 
 class BetterCNN_FCN(nn.Module):
-    """
-    FCN equivalente ao ModelBetterCNN, mas a operar em imagem inteira.
-    Produz logits [B, C, Hout, Wout].
-    """
-
     def __init__(self, trained_model: nn.Module, num_classes: int = 11):
         super().__init__()
         if not hasattr(trained_model, "features") or not hasattr(trained_model, "classifier"):
@@ -422,7 +355,6 @@ class BetterCNN_FCN(nn.Module):
         self.features = trained_model.features  # type: ignore
         clf: nn.Sequential = trained_model.classifier  # type: ignore
 
-        # procura robusta pelos módulos esperados
         fc1 = _find_linear(clf, in_f=64 * 7 * 7, out_f=256)
         bn1 = _find_bn1d(clf, n=256)
         fc2 = _find_last_linear(clf, in_f=256, out_f=num_classes)
@@ -560,7 +492,7 @@ def detect_fcn_multiscale(
 
         # stride efetivo do ModelBetterCNN: 4 (2 maxpools stride=2)
         stride = 4
-        win = 28  # patch equivalente ao treino (28x28)
+        win = 28  # patch equivalente ao treino
 
         Hout, Wout = preds_np.shape
         for i in range(Hout):
@@ -662,21 +594,17 @@ def save_qualitative_image(
     ax.set_title(title)
     ax.axis("off")
 
+    # GT branco
     for lab, b in zip(gt_labels.tolist(), gt_boxes.tolist()):
         x1, y1, x2, y2 = b
         ax.add_patch(plt.Rectangle((x1, y1), x2 - x1, y2 - y1, fill=False, linewidth=2.0, edgecolor="white"))
         ax.text(x1, max(0, y1 - 2), str(lab), color="white", fontsize=12, fontweight="bold")
 
+    # Pred verde
     for d in dets:
         ax.add_patch(
-            plt.Rectangle(
-                (d["x1"], d["y1"]),
-                d["x2"] - d["x1"],
-                d["y2"] - d["y1"],
-                fill=False,
-                linewidth=2.0,
-                edgecolor="lime",
-            )
+            plt.Rectangle((d["x1"], d["y1"]), d["x2"] - d["x1"], d["y2"] - d["y1"],
+                          fill=False, linewidth=2.0, edgecolor="lime")
         )
         ax.text(d["x1"], max(0, d["y1"] - 2), f"{d['pred']}:{d['score']:.2f}", color="lime", fontsize=11)
 
@@ -689,11 +617,10 @@ def save_qualitative_image(
 # MAIN
 # -----------------------------------------------------------------------------
 def main():
-    ap = argparse.ArgumentParser(description="T4: Re-treino (bg) + FCN + deteção multi-escala (sem alterar outros ficheiros)")
-    ap.add_argument("--data_base", type=str, default="../Tarefa2/data/versaoD")
+    ap = argparse.ArgumentParser(description="T4: Re-treino (bg) + FCN + deteção multi-escala")
+    ap.add_argument("--data_base", type=str, default="../Tarefa2/data/versaoD", help="caminho para dados (generate_data.py)")
     ap.add_argument("--out_dir", type=str, default="experiments_improved_detection")
     ap.add_argument("--model_py", type=str, default="", help="caminho para model.py (ex: ../Tarefa1/model.py)")
-    ap.add_argument("--init_from", type=str, default="", help="checkpoint 10 classes para init (opcional)")
 
     ap.add_argument("--imsize", type=int, default=128)
     ap.add_argument("--epochs", type=int, default=3)
@@ -702,8 +629,6 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
 
     ap.add_argument("--bg_per_digit", type=float, default=1.0, help="crops bg por dígito (aprox.)")
-    ap.add_argument("--max_train_imgs", type=int, default=0, help="0=sem limite; útil em CPU")
-    ap.add_argument("--max_test_imgs", type=int, default=0, help="0=sem limite; útil em CPU")
 
     ap.add_argument("--num_qual", type=int, default=8)
     ap.add_argument("--score_thr", type=float, default=0.60)
@@ -723,17 +648,41 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[i] device: {device}")
 
-    max_train = None if args.max_train_imgs <= 0 else args.max_train_imgs
-    max_test = None if args.max_test_imgs <= 0 else args.max_test_imgs
+    # -------------------------------------------------------------------------
+    # ALTERAÇÃO PEDIDA: treino com 1% das imagens de TESTE
+    # -------------------------------------------------------------------------
+    base_test, test_images_dir, test_labels_dir = resolve_split_dirs(args.data_base, "test")
+    if test_images_dir is None or test_labels_dir is None:
+        print("\n[ERRO] Não encontrei split de teste com subpastas images/labels (ou equivalentes).")
+        print(f"  base_test = {base_test}")
+        print(f"  images_dir = {test_images_dir}")
+        print(f"  labels_dir = {test_labels_dir}")
+        return
 
-    # --- datasets crops (treino classificação 11 classes)
+    all_test_imgs = list_images(test_images_dir)
+    if len(all_test_imgs) == 0:
+        print("\n[ERRO] Não existem imagens no split de teste.")
+        print(f"  test_images_dir = {test_images_dir}")
+        return
+
+    rng = random.Random(args.seed)
+    rng.shuffle(all_test_imgs)
+
+    n_train_imgs = max(1, int(round(0.01 * len(all_test_imgs))))
+    train_imgs = all_test_imgs[:n_train_imgs]
+    eval_imgs = all_test_imgs[n_train_imgs:] if len(all_test_imgs) > n_train_imgs else all_test_imgs[:]
+
+    print(f"[i] total imagens TESTE: {len(all_test_imgs)}")
+    print(f"[i] treino usa 1% do TESTE: {len(train_imgs)} imagens | avaliação: {len(eval_imgs)} imagens")
+
+    # datasets a partir do split "test", mas com subsets diferentes
     train_ds = SceneCropsDataset(
         args.data_base,
-        split="train",
+        split="test",
         imsize=args.imsize,
         bg_per_digit=args.bg_per_digit,
         seed=args.seed,
-        max_imgs=max_train,
+        img_paths_list=train_imgs,
     )
     test_ds = SceneCropsDataset(
         args.data_base,
@@ -741,27 +690,17 @@ def main():
         imsize=args.imsize,
         bg_per_digit=args.bg_per_digit,
         seed=args.seed + 1,
-        max_imgs=max_test,
+        img_paths_list=eval_imgs,
     )
 
-    # --- sanity checks (para evitar DataLoader com 0 samples)
     if len(train_ds) == 0:
-        base = pathlib.Path(args.data_base).expanduser().resolve()
-        print("\n[ERRO] train_ds tem 0 amostras (nenhum crop foi criado).")
-        print(f"  data_base = {base}")
-        print(f"  tentei split train em: {train_ds.base}")
-        print(f"  images_dir = {train_ds.images_dir}")
+        print("\n[ERRO] train_ds tem 0 amostras (nenhum crop).")
+        print("  Confirma que existem labels .txt a corresponder às imagens selecionadas.")
         print(f"  labels_dir = {train_ds.labels_dir}")
-        print("  Esperado algo como: <data_base>/train/images/*.png e <data_base>/train/labels/*.txt")
-        print("  Nota: este script tenta também training/, imgs/, annotations/, etc.")
         return
-
     if len(test_ds) == 0:
-        base = pathlib.Path(args.data_base).expanduser().resolve()
-        print("\n[ERRO] test_ds tem 0 amostras (nenhum crop foi criado).")
-        print(f"  data_base = {base}")
-        print(f"  tentei split test em: {test_ds.base}")
-        print(f"  images_dir = {test_ds.images_dir}")
+        print("\n[ERRO] test_ds tem 0 amostras (nenhum crop).")
+        print("  Confirma que existem labels .txt a corresponder às imagens selecionadas.")
         print(f"  labels_dir = {test_ds.labels_dir}")
         return
 
@@ -770,16 +709,11 @@ def main():
     train_dl = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=0)
     test_dl = DataLoader(test_ds, batch_size=args.batch_size, shuffle=False, num_workers=0)
 
-    # --- modelo 11 classes (classificador)
+    # modelo 11 classes (classificador)
     ModelBetterCNN = import_modelbettercnn(args.model_py)
     model = ModelBetterCNN()
     model = patch_model_to_n_classes(model, n_classes=11).to(device)
 
-    if args.init_from.strip():
-        print(f"[i] init_from checkpoint: {args.init_from}")
-        model = init_from_10class_checkpoint(model, args.init_from, device=device, n_classes=11)
-
-    # --- treino (classificação 11c)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     crit = nn.CrossEntropyLoss()
 
@@ -790,37 +724,54 @@ def main():
     y_pred: List[int] = []
 
     for ep in range(args.epochs):
+        # -------------------------
+        # treino (tqdm por época)
+        # -------------------------
         model.train()
         losses = []
-
         t_ep0 = time.perf_counter()
-        for x, y in train_dl:
+
+        pbar = tqdm(train_dl, desc=f"Treino ep {ep+1}/{args.epochs}", unit="batch", dynamic_ncols=True)
+        for x, y in pbar:
             x = x.to(device)
             y = y.to(device)
             logits = model(x)
             loss = crit(logits, y)
+
             opt.zero_grad()
             loss.backward()
             opt.step()
+
             losses.append(float(loss.item()))
+            pbar.set_postfix(loss=f"{loss.item():.4f}")
+
         t_ep1 = time.perf_counter()
 
-        # eval classificação
+        # -------------------------
+        # avaliação (tqdm por época)
+        # -------------------------
         model.eval()
         correct = 0
         total = 0
         y_true = []
         y_pred = []
+
+        pbar_eval = tqdm(test_dl, desc=f"Eval   ep {ep+1}/{args.epochs}", unit="batch", dynamic_ncols=True)
         with torch.no_grad():
-            for x, y in test_dl:
+            for x, y in pbar_eval:
                 x = x.to(device)
                 y = y.to(device)
                 logits = model(x)
                 pred = logits.argmax(dim=1)
+
                 correct += int((pred == y).sum().item())
                 total += int(y.numel())
+
                 y_true.extend(y.detach().cpu().tolist())
                 y_pred.extend(pred.detach().cpu().tolist())
+
+                acc_now = correct / max(1, total)
+                pbar_eval.set_postfix(acc=f"{acc_now*100:.2f}%")
 
         train_loss = float(np.mean(losses)) if losses else 0.0
         acc = correct / max(1, total)
@@ -844,7 +795,7 @@ def main():
 
     print(f"\n[i] best test acc (classificação crops): {best_acc*100:.2f}%")
 
-    # --- métricas classificação 11c
+    # métricas classificação 11c
     cm = compute_confusion_matrix(y_true, y_pred, n_classes=11)
     prec, rec, f1, macro = precision_recall_f1_from_cm(cm)
 
@@ -870,63 +821,17 @@ def main():
 
     print("[i] guardado: confusion_matrix_11c.png, metrics_11c.json, training_curve.png")
 
-    # -----------------------------------------------------------------------------
-    # Conversão para FCN + deteção em imagens completas (amostra qualitativa)
-    # -----------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # FCN + deteção em cenas (qualitativo)
+    # -------------------------------------------------------------------------
     fcn = BetterCNN_FCN(model, num_classes=11).to(device)
     fcn.eval()
 
-    if args.use_multiscale:
-        scales = default_scales_for_minmax(min_size=22, max_size=36, ref=28)
-    else:
-        scales = [1.0]
+    scales = default_scales_for_minmax(22, 36, 28) if args.use_multiscale else [1.0]
     print(f"[i] escalas deteção: {scales}")
 
-    # imagens de teste (cenas)
-    base_root = pathlib.Path(args.data_base).expanduser().resolve()
-    test_dir_candidates = [base_root / "test", base_root / "testing", base_root / "Test"]
-    test_dir = None
-    for c in test_dir_candidates:
-        if c.is_dir():
-            test_dir = c
-            break
-    if test_dir is None:
-        test_dir = base_root / "test"
-
-    # tenta encontrar images/labels dentro do split test
-    images_dir = None
-    for d in ["images", "Images", "imgs", "img"]:
-        p = test_dir / d
-        if p.is_dir():
-            images_dir = p
-            break
-    labels_dir = None
-    for d in ["labels", "Labels", "label", "annotations", "ann", "annotation"]:
-        p = test_dir / d
-        if p.is_dir():
-            labels_dir = p
-            break
-
-    if images_dir is None or labels_dir is None:
-        print("\n[ERRO] Não encontrei pastas de imagens/labels no split de teste para deteção.")
-        print(f"  test_dir = {test_dir}")
-        print(f"  images_dir = {images_dir}")
-        print(f"  labels_dir = {labels_dir}")
-        return
-
-    exts = ["*.png", "*.PNG", "*.jpg", "*.JPG", "*.jpeg", "*.JPEG"]
-    img_paths: List[pathlib.Path] = []
-    for e in exts:
-        img_paths += list(images_dir.glob(e))
-    img_paths = sorted(img_paths, key=lambda p: int(p.stem) if p.stem.isdigit() else p.stem)
-    if max_test is not None:
-        img_paths = img_paths[:max_test]
-
-    if len(img_paths) == 0:
-        print("[!] Não encontrei imagens em test/images (ou equivalente) para deteção.")
-        return
-
-    pick = random.sample(img_paths, k=min(args.num_qual, len(img_paths)))
+    # para qualitativo de deteção, usa amostra das imagens de avaliação (eval_imgs)
+    pick = rng.sample(eval_imgs, k=min(args.num_qual, len(eval_imgs)))
 
     total_tp = total_fp = total_fn = 0
     matched_ious_all: List[float] = []
@@ -936,27 +841,12 @@ def main():
     for p in pick:
         img01 = np.array(Image.open(p).convert("L"), dtype=np.float32) / 255.0
 
-        lp = labels_dir / f"{p.stem}.txt"
+        lp = test_labels_dir / f"{p.stem}.txt"
         if not lp.is_file() and p.stem.isdigit():
-            lp2 = labels_dir / f"{int(p.stem)}.txt"
+            lp2 = test_labels_dir / f"{int(p.stem)}.txt"
             if lp2.is_file():
                 lp = lp2
-
         if not lp.is_file():
-            # sem GT não dá para avaliar; ainda assim faz deteção e guarda imagem
-            dets, dt = detect_fcn_multiscale(
-                img01=img01,
-                fcn_model=fcn,
-                device=device,
-                bg_class=10,
-                scales=scales,
-                score_thr=args.score_thr,
-                nms_iou=args.nms_iou,
-            )
-            det_times.append(dt)
-            total_dets += len(dets)
-            title = f"{p.name} | (sem GT) | dt={dt*1000:.1f}ms"
-            save_qualitative_image(out_dir / f"qual_{p.stem}.png", img01, np.array([], np.int64), np.zeros((0, 4), np.int64), dets, title)
             continue
 
         gt_labels, gt_boxes = read_labels_txt(lp)

@@ -1,0 +1,19 @@
+{
+  "num_images_eval": 8,
+  "tp": 0,
+  "fp": 0,
+  "fn": 32,
+  "precision": 0.0,
+  "recall": 0.0,
+  "mean_iou_matched": 0.0,
+  "score_thr": 0.6,
+  "nms_iou": 0.3,
+  "match_iou": 0.3,
+  "scales": [
+    1.0
+  ],
+  "mean_detection_time_s": 0.011077866121922852,
+  "mean_detection_time_ms": 11.077866121922852,
+  "avg_dets_per_image": 0.0,
+  "device": "cpu"
+}
